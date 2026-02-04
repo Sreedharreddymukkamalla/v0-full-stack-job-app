@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { AlertCircle } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
 
 export default function GoogleAuthCallback() {
   const router = useRouter();
@@ -15,6 +14,9 @@ export default function GoogleAuthCallback() {
   useEffect(() => {
     (async () => {
       try {
+        // Dynamically import supabase only when needed (client-side)
+        const { supabase } = await import('@/lib/supabase');
+        
         // Get the session from the URL fragment
         // Supabase OAuth automatically exchanges the code and sets the session
         const { data, error: sessionError } = await supabase.auth.getSession();

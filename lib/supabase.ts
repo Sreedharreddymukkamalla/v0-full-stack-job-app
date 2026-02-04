@@ -1,19 +1,38 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+let supabaseClient: ReturnType<typeof createClient> | null = null;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables');
+function getSupabaseClient() {
+  if (supabaseClient) {
+    return supabaseClient;
+  }
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error('Missing Supabase environment variables. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in your environment.');
+  }
+
+  supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
+  return supabaseClient;
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = {
+  auth: {
+    signInWithOAuth: async (options: any) => getSupabaseClient().auth.signInWithOAuth(options),
+    signOut: async () => getSupabaseClient().auth.signOut(),
+    getSession: async () => getSupabaseClient().auth.getSession(),
+    getUser: async () => getSupabaseClient().auth.getUser(),
+  },
+};
 
 export async function signInWithGoogle() {
-  const { data, error } = await supabase.auth.signInWithOAuth({
+  const client = getSupabaseClient();
+  const { data, error } = await client.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: `${typeof window !== 'undefined' ? window.location.origin : ''}/auth/callback`,
+      redirectTo: `${typeof window !== 'undefined' ? window.location.origin : ''}/auth/google/callback`,
     },
   });
 
@@ -25,10 +44,11 @@ export async function signInWithGoogle() {
 }
 
 export async function signUpWithGoogle() {
-  const { data, error } = await supabase.auth.signInWithOAuth({
+  const client = getSupabaseClient();
+  const { data, error } = await client.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: `${typeof window !== 'undefined' ? window.location.origin : ''}/auth/callback`,
+      redirectTo: `${typeof window !== 'undefined' ? window.location.origin : ''}/auth/google/callback`,
     },
   });
 
@@ -40,7 +60,8 @@ export async function signUpWithGoogle() {
 }
 
 export async function getCurrentUser() {
-  const { data, error } = await supabase.auth.getUser();
+  const client = getSupabaseClient();
+  const { data, error } = await client.auth.getUser();
   if (error) {
     return null;
   }
@@ -48,5 +69,6 @@ export async function getCurrentUser() {
 }
 
 export async function signOut() {
-  await supabase.auth.signOut();
+  const client = getSupabaseClient();
+  await client.auth.signOut();
 }
