@@ -36,6 +36,7 @@ import {
 import { MOCK_POSTS, MOCK_USERS } from '@/lib/mock-data';
 import { getCurrentUser } from '@/lib/auth';
 import { FeedSidebar } from '@/components/feed-sidebar';
+import { getHomePageData } from '@/lib/supabase';
 
 interface Post {
   id: string;
@@ -73,21 +74,62 @@ export default function FeedPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setTimeout(() => {
-      setPosts(MOCK_POSTS);
-      const userMap = new Map();
-      MOCK_USERS.forEach((user) => {
-        userMap.set(user.id, {
-          id: user.id,
-          name: user.name,
-          avatar: user.avatar,
-          title: user.title,
-          company: user.company,
+    const fetchFeedData = async () => {
+      try {
+        // Fetch data from RPC
+        const data = await getHomePageData();
+        console.log('[v0] Fetched feed data:', data);
+        
+        // Transform RPC feed data to match Post interface if available
+        if (data?.feed && Array.isArray(data.feed)) {
+          const transformedPosts = data.feed.map((item: any) => ({
+            id: item.id?.toString() || '',
+            author_id: item.author_id?.toString() || '',
+            content: item.content || '',
+            created_at: item.created_at || new Date().toISOString(),
+            likes: item.like_count || 0,
+            comments: item.comment_count || 0,
+            shares: 0,
+          }));
+          setPosts(transformedPosts);
+        } else {
+          // Fall back to mock data
+          setPosts(MOCK_POSTS);
+        }
+
+        // Set up user map from mock data
+        const userMap = new Map();
+        MOCK_USERS.forEach((user) => {
+          userMap.set(user.id, {
+            id: user.id,
+            name: user.name,
+            avatar: user.avatar,
+            title: user.title,
+            company: user.company,
+          });
         });
-      });
-      setUsers(userMap);
-      setLoading(false);
-    }, 500);
+        setUsers(userMap);
+      } catch (error) {
+        console.error('[v0] Error fetching feed data:', error);
+        // Fall back to mock data on error
+        setPosts(MOCK_POSTS);
+        const userMap = new Map();
+        MOCK_USERS.forEach((user) => {
+          userMap.set(user.id, {
+            id: user.id,
+            name: user.name,
+            avatar: user.avatar,
+            title: user.title,
+            company: user.company,
+          });
+        });
+        setUsers(userMap);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchFeedData();
   }, []);
 
   const getUser = (userId: string): User | undefined => {
