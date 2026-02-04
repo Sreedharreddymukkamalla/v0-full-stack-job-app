@@ -2,6 +2,10 @@ import { createClient } from '@supabase/supabase-js';
 
 let supabaseClient: ReturnType<typeof createClient> | null = null;
 
+function isSupabaseConfigured(): boolean {
+  return !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+}
+
 function getSupabaseClient() {
   if (supabaseClient) {
     return supabaseClient;
@@ -11,7 +15,7 @@ function getSupabaseClient() {
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error('Missing Supabase environment variables. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in your environment.');
+    throw new Error('Supabase is not configured. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in your environment variables.');
   }
 
   supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
@@ -28,11 +32,15 @@ export const supabase = {
 };
 
 export async function signInWithGoogle() {
+  if (!isSupabaseConfigured()) {
+    throw new Error('Supabase is not configured. Google sign-in requires NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY environment variables to be set.');
+  }
+
   const client = getSupabaseClient();
   const { data, error } = await client.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: `${typeof window !== 'undefined' ? window.location.origin : ''}/auth/callback`,
+      redirectTo: `${typeof window !== 'undefined' ? window.location.origin : ''}/auth/google/callback`,
     },
   });
 
@@ -44,6 +52,10 @@ export async function signInWithGoogle() {
 }
 
 export async function signUpWithGoogle() {
+  if (!isSupabaseConfigured()) {
+    throw new Error('Supabase is not configured. Google sign-up requires NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY environment variables to be set.');
+  }
+
   const client = getSupabaseClient();
   const { data, error } = await client.auth.signInWithOAuth({
     provider: 'google',
@@ -60,6 +72,10 @@ export async function signUpWithGoogle() {
 }
 
 export async function getCurrentUser() {
+  if (!isSupabaseConfigured()) {
+    return null;
+  }
+
   const client = getSupabaseClient();
   const { data, error } = await client.auth.getUser();
   if (error) {
@@ -69,6 +85,14 @@ export async function getCurrentUser() {
 }
 
 export async function signOut() {
+  if (!isSupabaseConfigured()) {
+    return;
+  }
+
   const client = getSupabaseClient();
   await client.auth.signOut();
+}
+
+export function isSupabaseAvailable(): boolean {
+  return isSupabaseConfigured();
 }
