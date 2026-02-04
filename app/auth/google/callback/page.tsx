@@ -1,70 +1,53 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { AlertCircle } from 'lucide-react';
-import { apiFetch } from '@/lib/api';
+import { supabase } from '@/lib/supabase';
 
 export default function GoogleAuthCallback() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
       try {
-        const code = searchParams.get('code');
-        const state = searchParams.get('state');
-        const errorParam = searchParams.get('error');
+        // Get the session from the URL fragment
+        // Supabase OAuth automatically exchanges the code and sets the session
+        const { data, error: sessionError } = await supabase.auth.getSession();
 
-        if (errorParam) {
-          setError(errorParam === 'access_denied' ? 'Google sign-in was cancelled' : `Authentication error: ${errorParam}`);
+        if (sessionError) {
+          throw new Error(sessionError.message);
+        }
+
+        if (!data.session) {
+          setError('No session created. Please try signing in again.');
           setIsLoading(false);
           return;
         }
 
-        if (!code) {
-          setError('No authorization code received');
-          setIsLoading(false);
-          return;
-        }
+        console.log('[v0] Google auth successful, user:', data.session.user.email);
+        
+        // Store user info in localStorage for app access
+        localStorage.setItem('currentUser', JSON.stringify({
+          id: data.session.user.id,
+          email: data.session.user.email,
+          name: data.session.user.user_metadata?.full_name || 'User',
+          avatar: data.session.user.user_metadata?.avatar_url,
+        }));
 
-        // Exchange authorization code for tokens
-        const res = await apiFetch<{
-          access_token: string;
-          refresh_token: string;
-          profile: any;
-        }>('/auth/google/callback', {
-          method: 'POST',
-          json: { code, state },
-          skipAuth: true,
-        });
-
-        // Store tokens
-        localStorage.setItem('accessToken', res.access_token);
-        localStorage.setItem('refreshToken', res.refresh_token);
-
-        // Fetch user profile to check if onboarding is needed
-        try {
-          const profile = await apiFetch<any>('/profiles/me');
-          const needsProfile = !profile?.name || !profile?.title || !profile?.location;
-
-          console.log('[v0] Google auth successful, redirecting to', needsProfile ? 'onboarding' : 'feed');
-          router.push(needsProfile ? '/onboarding' : '/feed');
-        } catch (err) {
-          console.log('[v0] Profile fetch skipped, redirecting to feed');
-          router.push('/feed');
-        }
+        // Redirect to feed
+        router.push('/feed');
       } catch (err: any) {
         console.error('[v0] Google auth callback error:', err);
         setError(err?.message || 'Authentication failed');
         setIsLoading(false);
       }
     })();
-  }, [searchParams, router]);
+  }, [router]);
 
   if (error) {
     return (

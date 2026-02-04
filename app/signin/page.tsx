@@ -9,8 +9,8 @@ import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { ArrowRight, Mail, Lock, AlertCircle, Check, Zap } from 'lucide-react';
 import { signIn as authSignIn } from '@/lib/auth';
+import { signInWithGoogle } from '@/lib/supabase';
 import { MOCK_USERS } from '@/lib/mock-data';
-import { signIn } from 'next-auth/react';
 
 export default function SignInPage() {
   const router = useRouter();
@@ -47,14 +47,10 @@ export default function SignInPage() {
   const handleGoogleSignIn = async () => {
     setLoading(true);
     try {
-      // In production, this would redirect to Google OAuth consent screen
-      // For now, simulate with mock data
-      const mockUser = MOCK_USERS[0];
-      localStorage.setItem('currentUser', JSON.stringify(mockUser));
-      router.push('/feed');
+      await signInWithGoogle();
     } catch (error) {
       console.error('[v0] Google sign-in error:', error);
-      setError('Google sign-in failed. Please try again.');
+      setError(error instanceof Error ? error.message : 'Google sign-in failed. Please try again.');
     } finally {
       setLoading(false);
     }
