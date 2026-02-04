@@ -96,3 +96,26 @@ export async function signOut() {
 export function isSupabaseAvailable(): boolean {
   return isSupabaseConfigured();
 }
+
+export async function getUserConversations(userId: number) {
+  if (!isSupabaseConfigured()) {
+    throw new Error('Supabase is not configured.');
+  }
+
+  const client = getSupabaseClient();
+  
+  try {
+    const { data, error } = await client.rpc('get_user_conversations', {
+      current_user_id: userId,
+    });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return data || [];
+  } catch (err) {
+    console.error('[v0] Error fetching conversations:', err);
+    throw err;
+  }
+}
