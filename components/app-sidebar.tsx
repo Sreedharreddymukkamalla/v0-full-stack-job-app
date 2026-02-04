@@ -1,0 +1,199 @@
+'use client';
+
+import React from "react"
+
+import { useState } from 'react';
+import { AvatarFallback } from "@/components/ui/avatar";
+import { AvatarImage } from "@/components/ui/avatar";
+import { Avatar } from "@/components/ui/avatar";
+import { SidebarSeparator } from "@/components/ui/sidebar";
+import { useRouter } from "next/navigation";
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import {
+  Home,
+  User,
+  Users,
+  Briefcase,
+  FileText,
+  MessageSquare,
+  Triangle,
+  ClipboardList,
+  Flag,
+  PanelLeftClose,
+  Zap,
+  LogOut,
+  FileEdit,
+  AlertCircle,
+} from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+} from '@/components/ui/sidebar';
+import { Button } from '@/components/ui/button';
+import { getCurrentUser, signOut } from '@/lib/auth';
+
+const menuItems = [
+  { icon: Home, label: 'Home', href: '/feed' },
+  { icon: User, label: 'Profile', href: '/profile' },
+  { icon: Users, label: 'My Network', href: '/users' },
+  { icon: Briefcase, label: 'Jobs', href: '/jobs' },
+  { icon: FileText, label: 'Jobs Applied', href: '/jobs/applied' },
+  { icon: MessageSquare, label: 'Messaging', href: '/messages' },
+  { icon: FileEdit, label: 'Resume Builder', href: '/resume' },
+  { icon: Triangle, label: 'AIM', href: '/agent' },
+  { icon: ClipboardList, label: 'Application Details', href: '/applications' },
+];
+
+export function AppSidebar() {
+  const pathname = usePathname();
+  const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
+  const [reportForm, setReportForm] = useState({
+    title: '',
+    description: '',
+    type: 'bug'
+  });
+
+  const isActive = (href: string) => {
+    // Exact match for jobs to prevent highlighting when on jobs/applied
+    if (href === '/jobs') {
+      return pathname === '/jobs';
+    }
+    return pathname === href || pathname.startsWith(href + '/');
+  };
+
+  const handleReportSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    console.log('[v0] Issue report submitted:', reportForm);
+    setIsReportDialogOpen(false);
+    setReportForm({ title: '', description: '', type: 'bug' });
+  };
+
+  return (
+    <Sidebar className="border-r border-sidebar-border bg-sidebar">
+      <SidebarHeader className="h-16 flex items-center justify-between px-6 border-b border-sidebar-border">
+        <span className="text-lg font-bold tracking-tight text-sidebar-foreground">AIMPLOY</span>
+        <Button variant="ghost" size="icon" className="h-8 w-8">
+          <PanelLeftClose className="h-4 w-4" />
+        </Button>
+      </SidebarHeader>
+
+      <SidebarContent className="px-2 py-4">
+        <SidebarMenu className="gap-1">
+          {menuItems.map((item) => (
+            <SidebarMenuItem key={item.href}>
+              <SidebarMenuButton
+                asChild
+                isActive={isActive(item.href)}
+                className="h-12 rounded-lg transition-colors hover:bg-sidebar-accent data-[active=true]:bg-accent data-[active=true]:text-accent-foreground"
+              >
+                <Link href={item.href} className="flex items-center gap-4 px-4">
+                  <item.icon className="h-5 w-5 flex-shrink-0" strokeWidth={2} />
+                  <span className="font-normal">{item.label}</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          ))}
+        </SidebarMenu>
+      </SidebarContent>
+
+      <SidebarFooter className="p-2 border-t border-sidebar-border mt-auto">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              onClick={() => setIsReportDialogOpen(true)}
+              className="h-12 rounded-lg transition-colors hover:bg-sidebar-accent"
+            >
+              <div className="flex items-center gap-4 px-4">
+                <Flag className="h-5 w-5 flex-shrink-0" strokeWidth={2} />
+                <span className="font-normal">Report Issue</span>
+              </div>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
+
+      <Dialog open={isReportDialogOpen} onOpenChange={setIsReportDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-primary" />
+              Report an Issue
+            </DialogTitle>
+            <DialogDescription>
+              Help us improve by reporting bugs or suggesting features. We'll review your feedback shortly.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleReportSubmit} className="space-y-4 mt-4">
+            <div className="space-y-2">
+              <Label htmlFor="issue-type">Issue Type</Label>
+              <select
+                id="issue-type"
+                value={reportForm.type}
+                onChange={(e) => setReportForm({...reportForm, type: e.target.value})}
+                className="w-full h-10 px-3 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value="bug">Bug Report</option>
+                <option value="feature">Feature Request</option>
+                <option value="improvement">Improvement</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="issue-title">Title</Label>
+              <Input
+                id="issue-title"
+                placeholder="Brief description of the issue"
+                value={reportForm.title}
+                onChange={(e) => setReportForm({...reportForm, title: e.target.value})}
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="issue-description">Description</Label>
+              <Textarea
+                id="issue-description"
+                placeholder="Please provide detailed information about the issue..."
+                value={reportForm.description}
+                onChange={(e) => setReportForm({...reportForm, description: e.target.value})}
+                className="min-h-[120px] resize-none"
+                required
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsReportDialogOpen(false)}
+                className="bg-transparent"
+              >
+                Cancel
+              </Button>
+              <Button type="submit">
+                Submit Report
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </Sidebar>
+  );
+}
