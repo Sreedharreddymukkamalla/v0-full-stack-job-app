@@ -88,9 +88,9 @@ export function AppSidebar() {
 
   return (
     <Sidebar className="border-r border-sidebar-border bg-sidebar">
-      <SidebarHeader className="h-16 flex items-center justify-between px-6 border-b border-sidebar-border">
+      <SidebarHeader className="h-16 flex items-center justify-between px-4 border-b border-sidebar-border">
         {open && <span className="text-lg font-bold tracking-tight text-sidebar-foreground">AIMPLOY</span>}
-        <Button variant="ghost" size="icon" className="h-8 w-8 mx-auto" onClick={toggleSidebar}>
+        <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0" onClick={toggleSidebar}>
           <PanelLeftClose className="h-4 w-4" />
         </Button>
       </SidebarHeader>
