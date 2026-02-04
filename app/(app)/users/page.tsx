@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -12,6 +12,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
+import { getUserNetwork } from '@/lib/supabase';
 
 const suggestedUsers = [
   {
@@ -121,6 +122,48 @@ export default function UsersPage() {
   const [myConnections, setMyConnections] = useState(connections);
   const [pending, setPending] = useState(sentRequests);
   const [invitationsOpen, setInvitationsOpen] = useState(true);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch network data from RPC on component mount
+  useEffect(() => {
+    const fetchNetworkData = async () => {
+      try {
+        const currentUser = typeof window !== 'undefined' ? localStorage.getItem('currentUser') : null;
+        if (!currentUser) {
+          console.log('[v0] No current user, using mock network data');
+          setLoading(false);
+          return;
+        }
+
+        const user = JSON.parse(currentUser);
+        const userId = user.id;
+
+        console.log('[v0] Fetching network data for user:', userId);
+        const data = await getUserNetwork(userId);
+        console.log('[v0] Fetched network data:', data);
+
+        // Transform RPC data to match component structure
+        if (data) {
+          if (data.connections && Array.isArray(data.connections)) {
+            setMyConnections(data.connections);
+          }
+          if (data.requests && Array.isArray(data.requests)) {
+            setInvites(data.requests);
+          }
+          if (data.suggestions && Array.isArray(data.suggestions)) {
+            setSuggested(data.suggestions);
+          }
+        }
+      } catch (error) {
+        console.error('[v0] Error fetching network data:', error);
+        // Fall back to mock data on error
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchNetworkData();
+  }, []);
 
   const handleRemove = (userId: number, type: string) => {
     if (type === 'suggested') {

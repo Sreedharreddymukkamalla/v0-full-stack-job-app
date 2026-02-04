@@ -142,3 +142,26 @@ export async function getHomePageData(userId?: number) {
     throw err;
   }
 }
+
+export async function getUserNetwork(userId: number) {
+  if (!isSupabaseConfigured()) {
+    throw new Error('Supabase is not configured.');
+  }
+
+  const client = getSupabaseClient();
+  
+  try {
+    const { data, error } = await client.rpc('get_user_network', {
+      current_user_id: userId,
+    });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return data || { connections: [], requests: [], suggestions: [] };
+  } catch (err) {
+    console.error('[v0] Error fetching network data:', err);
+    throw err;
+  }
+}
