@@ -19,6 +19,13 @@ export default function ApplicationDetailsPage() {
   const [newFieldName, setNewFieldName] = useState('');
   const [newFieldValue, setNewFieldValue] = useState('');
   const resumeInputRef = useRef<HTMLInputElement>(null);
+  const [formData, setFormData] = useState({
+    fullName: '',
+    email: '',
+    phone: '',
+    location: '',
+    resume: null as File | null,
+  });
 
   const addCustomField = () => {
     if (newFieldName && newFieldValue) {
@@ -31,6 +38,10 @@ export default function ApplicationDetailsPage() {
   const removeCustomField = (index: number) => {
     setCustomFields(customFields.filter((_, i) => i !== index));
   };
+
+  const isFormValid = formData.fullName.trim() !== '' && 
+                      formData.email.trim() !== '' && 
+                      formData.phone.trim() !== '';
 
   return (
     <div className="min-h-screen bg-secondary/20">
@@ -53,6 +64,8 @@ export default function ApplicationDetailsPage() {
                 id="fullName"
                 placeholder="Full name"
                 className="h-11"
+                value={formData.fullName}
+                onChange={(e) => setFormData({...formData, fullName: e.target.value})}
                 required
               />
             </div>
@@ -67,6 +80,8 @@ export default function ApplicationDetailsPage() {
                 type="email"
                 placeholder="Email"
                 className="h-11"
+                value={formData.email}
+                onChange={(e) => setFormData({...formData, email: e.target.value})}
                 required
               />
             </div>
@@ -78,6 +93,8 @@ export default function ApplicationDetailsPage() {
               </Label>
               <Input
                 id="phone"
+                value={formData.phone}
+                onChange={(e) => setFormData({...formData, phone: e.target.value})}
                 type="tel"
                 placeholder="Phone"
                 className="h-11"
@@ -242,7 +259,12 @@ export default function ApplicationDetailsPage() {
 
             {/* Save Button */}
             <div className="pt-6">
-              <Button type="submit" size="lg" className="w-full">
+              <Button 
+                type="submit" 
+                size="lg" 
+                className="w-full" 
+                disabled={!isFormValid}
+              >
                 Save Application Details
               </Button>
             </div>

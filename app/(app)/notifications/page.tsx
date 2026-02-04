@@ -1,12 +1,14 @@
 'use client';
 
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Bell, BellOff, Trash2 } from 'lucide-react';
 
-const notifications = [
+const initialNotifications = [
   {
     id: 1,
     type: 'application',
@@ -55,6 +57,48 @@ const notifications = [
 ];
 
 export default function NotificationsPage() {
+  const router = useRouter();
+  const [notifications, setNotifications] = useState(initialNotifications);
+  const [deletingIds, setDeletingIds] = useState<Set<number>>(new Set());
+
+  const handleReply = (notif: any) => {
+    // Store the user to message in sessionStorage
+    sessionStorage.setItem('messageUser', notif.user);
+    router.push('/messages');
+  };
+
+  const handleAcceptConnection = (id: number) => {
+    console.log('[v0] Accepted connection:', id);
+    // Mark as read and update the notification
+    setNotifications(prev => 
+      prev.map(n => n.id === id ? { ...n, read: true, accepted: true } : n)
+    );
+  };
+
+  const handleDeleteNotification = (id: number) => {
+    setDeletingIds(prev => new Set(prev).add(id));
+    setTimeout(() => {
+      setNotifications(prev => prev.filter(n => n.id !== id));
+      setDeletingIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(id);
+        return newSet;
+      });
+    }, 300);
+  };
+
+  const handleMarkAllAsRead = () => {
+    const unreadIds = notifications.filter(n => !n.read).map(n => n.id);
+    unreadIds.forEach(id => {
+      setDeletingIds(prev => new Set(prev).add(id));
+    });
+    
+    setTimeout(() => {
+      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+      setDeletingIds(new Set());
+    }, 300);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-3xl mx-auto px-6 py-8 space-y-6">
@@ -63,15 +107,26 @@ export default function NotificationsPage() {
             <h1 className="text-3xl font-bold text-foreground">Notifications</h1>
             <p className="text-muted-foreground">Stay updated with what's happening</p>
           </div>
-          <Button variant="outline" size="sm" className="bg-transparent">Mark all as read</Button>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="bg-transparent"
+            onClick={handleMarkAllAsRead}
+          >
+            Mark all as read
+          </Button>
         </div>
 
         <div className="space-y-2">
           {notifications.map((notif) => (
             <Card
               key={notif.id}
-              className={`p-4 border-border transition-colors ${
+              className={`p-4 border-border transition-all duration-300 ${
                 !notif.read ? 'bg-muted/50 border-accent/30' : ''
+              } ${
+                deletingIds.has(notif.id) 
+                  ? 'opacity-0 translate-x-full' 
+                  : 'opacity-100 translate-x-0'
               }`}
             >
               <div className="flex items-start gap-4">
@@ -89,16 +144,39 @@ export default function NotificationsPage() {
                 </div>
 
                 <div className="flex gap-2 flex-shrink-0">
-                  {notif.type === 'connection' && (
+                  {notif.type === 'connection' && !(notif as any).accepted && (
                     <>
-                      <Button size="sm">Accept</Button>
-                      <Button size="sm" variant="outline">Decline</Button>
+                      <Button 
+                        size="sm"
+                        onClick={() => handleAcceptConnection(notif.id)}
+                      >
+                        Accept
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => handleDeleteNotification(notif.id)}
+                      >
+                        Decline
+                      </Button>
                     </>
                   )}
-                  {notif.type === 'message' && (
-                    <Button size="sm">Reply</Button>
+                  {notif.type === 'connection' && (notif as any).accepted && (
+                    <Badge variant="secondary">Connected</Badge>
                   )}
-                  <Button variant="ghost" size="icon">
+                  {notif.type === 'message' && (
+                    <Button 
+                      size="sm"
+                      onClick={() => handleReply(notif)}
+                    >
+                      Reply
+                    </Button>
+                  )}
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    onClick={() => handleDeleteNotification(notif.id)}
+                  >
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>

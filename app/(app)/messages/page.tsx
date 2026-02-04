@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect } from "react"
+
 import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -108,11 +110,23 @@ const messages = [
 
 export default function MessagesPage() {
   const [conversationList, setConversationList] = useState(conversations);
-  const [selectedConversation, setSelectedConversation] = useState<number>(1);
   const [messageInput, setMessageInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [mutedConversations, setMutedConversations] = useState<Set<number>>(new Set());
   const [blockedUsers, setBlockedUsers] = useState<Set<number>>(new Set());
+  const [selectedConversation, setSelectedConversation] = useState<number>(1);
+
+  // Check if we should open a specific conversation (client-side only)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const messageUser = sessionStorage.getItem('messageUser');
+      if (messageUser) {
+        sessionStorage.removeItem('messageUser');
+        const conv = conversations.find(c => c.name === messageUser);
+        setSelectedConversation(conv?.id || 1);
+      }
+    }
+  }, []);
 
   const handleSendMessage = () => {
     if (messageInput.trim()) {
@@ -161,9 +175,27 @@ export default function MessagesPage() {
         <div className="p-5 border-b border-border space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold text-foreground">Messages</h2>
-            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg">
-              <MoreVertical className="h-4 w-4" />
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => console.log('[v0] Mark all as read')}>
+                  <CheckCheck className="h-4 w-4 mr-2" />
+                  Mark all as read
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => console.log('[v0] Settings')}>
+                  Settings
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => console.log('[v0] Archive all')}>
+                  <Archive className="h-4 w-4 mr-2" />
+                  Archive all
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
           <div className="relative">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />

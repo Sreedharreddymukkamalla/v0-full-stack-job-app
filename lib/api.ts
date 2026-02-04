@@ -1,175 +1,269 @@
 /**
- * API Helper Functions
- * Centralized API calls for the AImploy platform
- * Supports both real API calls and mock data
+ * API Helper Functions with Supabase Support
+ * Comprehensive API utilities for authentication, file uploads, and data fetching
  */
 
-import { isUsingMockData } from './auth';
-import {
-  MOCK_POSTS,
-  MOCK_JOBS,
-  MOCK_MESSAGES,
-  MOCK_CONVERSATIONS,
-  MOCK_COMPANIES,
-  MOCK_NOTIFICATIONS,
-} from './mock-data';
-
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
-const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true';
-
-interface ApiOptions extends RequestInit {
-  params?: Record<string, string | number | boolean>;
-}
-
-/**
- * Make authenticated API requests or return mock data
- */
-export async function apiFetch<T>(
-  endpoint: string,
-  options?: ApiOptions
-): Promise<T> {
-  // Check if we should use mock data
-  const useMock = USE_MOCK || (typeof window !== 'undefined' && isUsingMockData());
-
-  if (useMock) {
-    return getMockData<T>(endpoint);
-  }
-
-  const url = new URL(`${BASE_URL}${endpoint}`);
-  
-  // Add query parameters
-  if (options?.params) {
-    Object.entries(options.params).forEach(([key, value]) => {
-      url.searchParams.append(key, String(value));
-    });
-  }
-
+const API_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL || "/api/v1").replace(/\/$/, "");
+const API_ORIGIN = (() => {
   try {
-    const response = await fetch(url.toString(), {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options?.headers,
-      },
-    });
+    const base = new URL(
+      API_BASE,
+      typeof window !== "undefined" ? window.location.origin : "http://localhost"
+    );
+    return base.origin;
+  } catch {
+    return "";
+  }
+})();
 
-    if (!response.ok) {
-      throw new Error(`API Error: ${response.status} ${response.statusText}`);
+// Separate origin for file assets (/uploads). Allows pointing directly at backend host even when API_BASE is relative.
+const FILE_BASE_ORIGIN = (() => {
+  const override = process.env.NEXT_PUBLIC_FILE_BASE_URL as string | undefined;
+  if (override) {
+    try {
+      return new URL(override).origin;
+    } catch {
+      /* fall through */
     }
+  }
+  // Fallback to API origin
+  return API_ORIGIN || (typeof window !== "undefined" ? window.location.origin : "");
+})();
 
-    return response.json();
-  } catch (error) {
-    console.warn('[API] Request failed, falling back to mock data:', endpoint);
-    return getMockData<T>(endpoint);
+// Supabase public bucket base for legacy /uploads paths (optional)
+const SUPABASE_UPLOAD_BASE = process.env.NEXT_PUBLIC_SUPABASE_UPLOAD_BASE as string | undefined;
+
+const missingUploads = new Set<string>();
+
+export function markUploadMissing(url?: string) {
+  if (!url) return;
+  try {
+    const normalized = new URL(url, API_ORIGIN || window.location.origin).toString();
+    if (normalized.includes("/uploads/")) {
+      missingUploads.add(normalized);
+    }
+  } catch {
+    // ignore
   }
 }
 
-/**
- * Return mock data based on endpoint
- */
-function getMockData<T>(endpoint: string): T {
-  // Simulate network delay
-  const delay = Math.random() * 500 + 200;
-  
-  if (endpoint.includes('/posts') || endpoint === '/feed') {
-    return new Promise((resolve) => {
-      setTimeout(() => resolve(MOCK_POSTS as T), delay);
-    }) as any;
+export function resolveMediaUrl(path?: string): string | undefined {
+  if (!path) return path;
+  // Detect supabase signed URLs or legacy uploads path and rewrite to configured public upload base when available.
+  try {
+    const parsed = new URL(path, typeof window !== "undefined" ? window.location.origin : "http://localhost");
+    const isSupabaseHost = parsed.host.includes("supabase.co");
+    if (isSupabaseHost) {
+      // Handle signed object URLs (e.g. /object/sign/uploads/<path>) or direct /uploads/ paths
+      let matched: string | null = null;
+      if (parsed.pathname.includes("/uploads/")) {
+        matched = parsed.pathname.split("/uploads/").pop() || null;
+      } else if (parsed.pathname.includes("/object/sign/")) {
+        const after = parsed.pathname.split("/object/sign/").pop() || "";
+        // After object/sign/ may include uploads/<path> or bucket/path; prefer the portion after uploads/ if present
+        matched = after.includes("/uploads/") ? after.split("/uploads/").pop() : after || null;
+      }
+      if (matched) {
+        const filenameOrPath = String(matched).replace(/^\/+/, "");
+        if (SUPABASE_UPLOAD_BASE) {
+          return `${SUPABASE_UPLOAD_BASE.replace(/\/$/, "")}/${filenameOrPath}`;
+        }
+        // Fall back to building a public storage URL on the same supabase origin
+        const bucket = "uploads";
+        return `${parsed.origin}/storage/v1/object/public/${bucket}/${filenameOrPath}`;
+      }
+    }
+  } catch {
+    // ignore URL parsing errors — fall back to other checks
   }
 
-  if (endpoint.includes('/jobs') || endpoint === '/listings') {
-    return new Promise((resolve) => {
-      setTimeout(() => resolve(MOCK_JOBS as T), delay);
-    }) as any;
+  const hasUploads = path.startsWith("/uploads") || path.startsWith("uploads/") || path.includes("/uploads/");
+  if (hasUploads && SUPABASE_UPLOAD_BASE) {
+    const filename = path.split("/").pop() || "";
+    return `${SUPABASE_UPLOAD_BASE.replace(/\/$/, "")}/${filename}`;
   }
-
-  if (endpoint.includes('/messages')) {
-    return new Promise((resolve) => {
-      setTimeout(() => resolve(MOCK_MESSAGES as T), delay);
-    }) as any;
+  // Already a fully-qualified URL (incl. data/blob URIs) – use as-is
+  if (/^(https?:|data:|blob:)/i.test(path)) {
+    try {
+      const url = new URL(path);
+      // Rewrite any upload URL to the current file origin to avoid mixed content/CORB
+      const isUploadPath = url.pathname.startsWith("/uploads");
+      const differentHost =
+        FILE_BASE_ORIGIN &&
+        new URL(FILE_BASE_ORIGIN).host !== url.host &&
+        (url.protocol.startsWith("http"));
+      if (isUploadPath && FILE_BASE_ORIGIN && differentHost) {
+        return `${FILE_BASE_ORIGIN}${url.pathname}`;
+      }
+    } catch {
+      // fall through
+    }
+    return path;
   }
-
-  if (endpoint.includes('/conversations')) {
-    return new Promise((resolve) => {
-      setTimeout(() => resolve(MOCK_CONVERSATIONS as T), delay);
-    }) as any;
+  const origin = path.startsWith("/uploads") ? FILE_BASE_ORIGIN : API_ORIGIN;
+  const full = path.startsWith("/") ? `${origin}${path}` : `${origin}/${path.replace(/^\/+/, "")}`;
+  if (full.includes("/uploads/")) {
+    if (missingUploads.has(full)) return undefined;
   }
-
-  if (endpoint.includes('/companies')) {
-    return new Promise((resolve) => {
-      setTimeout(() => resolve(MOCK_COMPANIES as T), delay);
-    }) as any;
-  }
-
-  if (endpoint.includes('/notifications')) {
-    return new Promise((resolve) => {
-      setTimeout(() => resolve(MOCK_NOTIFICATIONS as T), delay);
-    }) as any;
-  }
-
-  // Default empty response
-  return new Promise((resolve) => {
-    setTimeout(() => resolve([] as T), delay);
-  }) as any;
+  return full;
 }
 
-/**
- * Upload file to storage
- */
-export async function uploadFile(file: File, path: string): Promise<string> {
-  const useMock = USE_MOCK || (typeof window !== 'undefined' && isUsingMockData());
+type ApiOptions = RequestInit & {
+  /** When provided, will be JSON.stringify-ed and sent as the request body */
+  json?: unknown;
+  /** Skip attaching the Authorization header */
+  skipAuth?: boolean;
+};
 
-  if (useMock) {
-    // Return a mock URL
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const mockUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${file.name}`;
-        resolve(mockUrl);
-      }, 800);
+let refreshPromise: Promise<boolean> | null = null;
+let refreshDisabled = false;
+
+async function refreshToken(): Promise<boolean> {
+  if (refreshDisabled) return false;
+  if (refreshPromise) return refreshPromise;
+  const token = localStorage.getItem("refreshToken");
+  if (!token) {
+    refreshDisabled = true;
+    return false;
+  }
+  refreshPromise = (async () => {
+    try {
+      const res = await fetch(buildUrl("/auth/refresh"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token }),
+      });
+      if (!res.ok) {
+        // Only treat 401/422 as token-invalid and clear tokens; otherwise keep tokens and allow future retries
+        if (res.status === 422 || res.status === 401) {
+          localStorage.removeItem("accessToken");
+          localStorage.removeItem("refreshToken");
+          refreshDisabled = true;
+        } else {
+          refreshDisabled = false;
+        }
+        return false;
+      }
+      const data = await res.json();
+      if (data?.access_token && data?.refresh_token) {
+        localStorage.setItem("accessToken", data.access_token);
+        localStorage.setItem("refreshToken", data.refresh_token);
+        refreshDisabled = false;
+        return true;
+      }
+      refreshDisabled = false;
+      return false;
+    } catch {
+      // Network/other error: don't clear tokens, allow retry on next request
+      refreshDisabled = false;
+      return false;
+    } finally {
+      refreshPromise = null;
+    }
+  })();
+  return refreshPromise;
+}
+
+function buildUrl(path: string): string {
+  return `${API_BASE}${path.startsWith("/") ? "" : "/"}${path}`;
+}
+
+async function parseError(response: Response): Promise<string> {
+  try {
+    const data = await response.json();
+    if (typeof data?.detail === "string") return data.detail;
+    if (Array.isArray(data?.detail) && data.detail[0]?.msg) return data.detail[0].msg;
+    if (typeof data?.error?.message === "string") return data.error.message;
+  } catch {
+    // ignore JSON parse errors
+  }
+  return response.statusText || "Request failed";
+}
+
+export async function apiFetch<T>(path: string, options: ApiOptions = {}): Promise<T> {
+  const headers = new Headers(options.headers);
+  const token = localStorage.getItem("accessToken");
+
+  // If we don't have an access token, attempt to refresh using a stored refresh token
+  if (!options.skipAuth && !token) {
+    const refreshed = await refreshToken();
+    if (!refreshed) {
+      throw new Error("Not authenticated");
+    }
+  }
+
+  const finalToken = localStorage.getItem("accessToken");
+
+  if (finalToken && !options.skipAuth) {
+    headers.set("Authorization", `Bearer ${finalToken}`);
+  }
+
+  let body = options.body;
+  if (options.json !== undefined) {
+    headers.set("Content-Type", "application/json");
+    body = JSON.stringify(options.json);
+  }
+
+  const doFetch = () =>
+    fetch(buildUrl(path), {
+      ...options,
+      headers,
+      body,
     });
-  }
 
-  const formData = new FormData();
-  formData.append('file', file);
-  formData.append('path', path);
-
-  const response = await fetch(`${BASE_URL}/upload`, {
-    method: 'POST',
-    body: formData,
-  });
+  let response = await doFetch();
 
   if (!response.ok) {
-    throw new Error(`Upload failed: ${response.statusText}`);
+    if (response.status === 401 && !options.skipAuth) {
+      const refreshed = await refreshToken();
+      if (refreshed) {
+        headers.set("Authorization", `Bearer ${localStorage.getItem("accessToken") || ""}`);
+        response = await doFetch();
+      } else {
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("refreshToken");
+        throw new Error("Session expired. Please sign in again.");
+      }
+      if (response.status === 401) {
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("refreshToken");
+        throw new Error("Session expired. Please sign in again.");
+      }
+    }
+    if (!response.ok) {
+      throw new Error(await parseError(response));
+    }
   }
 
-  const data = await response.json();
-  return data.url;
-}
-
-// Cache helpers for reducing API calls
-const cache = new Map<string, { data: unknown; timestamp: number }>();
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-
-export function getCachedData<T>(key: string): T | null {
-  const cached = cache.get(key);
-  if (!cached) return null;
-
-  if (Date.now() - cached.timestamp > CACHE_TTL) {
-    cache.delete(key);
-    return null;
+  if (response.status === 204) {
+    return undefined as T;
   }
-
-  return cached.data as T;
-}
-
-export function setCacheData<T>(key: string, data: T): void {
-  cache.set(key, { data, timestamp: Date.now() });
-}
-
-export function clearCache(key?: string): void {
-  if (key) {
-    cache.delete(key);
-  } else {
-    cache.clear();
+  try {
+    return (await response.json()) as T;
+  } catch {
+    return undefined as T;
   }
+}
+
+// Upload a single media file (image or video) and return its public URL
+export async function uploadImage(file: File): Promise<string> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const result = await apiFetch<{ url: string }>("/uploads/image", {
+    method: "POST",
+    body: formData,
+  });
+  return result.url;
+}
+
+// Upload any file and return its public URL
+export async function uploadFile(file: File): Promise<string> {
+  const formData = new FormData();
+  formData.append("file", file);
+  // Backend supports /uploads/image for both images/videos; reuse for generic file uploads.
+  const result = await apiFetch<{ url: string }>("/uploads/image", {
+    method: "POST",
+    body: formData,
+  });
+  return result.url;
 }

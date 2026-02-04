@@ -109,6 +109,21 @@ export default function FeedPage() {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
+  const formatTimeAgo = (dateString: string): string => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffMins < 1) return 'just now';
+    if (diffMins < 60) return `${diffMins}m`;
+    if (diffHours < 24) return `${diffHours}h`;
+    if (diffDays < 7) return `${diffDays}d`;
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
+
   const toggleLike = (postId: string) => {
     setLikedPosts(prev => {
       const newSet = new Set(prev);
@@ -231,12 +246,12 @@ export default function FeedPage() {
                     />
                     <Button 
                       variant="ghost" 
-                      size="icon" 
-                      className="h-9 w-9 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10" 
+                      className="h-9 px-3 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 gap-2" 
                       title="Add photo"
                       onClick={() => imageInputRef.current?.click()}
                     >
                       <ImageIcon className="h-5 w-5" />
+                      <span className="text-sm font-medium">Photo</span>
                     </Button>
                     <input
                       ref={videoInputRef}
@@ -253,12 +268,12 @@ export default function FeedPage() {
                     />
                     <Button 
                       variant="ghost" 
-                      size="icon" 
-                      className="h-9 w-9 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10" 
+                      className="h-9 px-3 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 gap-2" 
                       title="Add video"
                       onClick={() => videoInputRef.current?.click()}
                     >
                       <Video className="h-5 w-5" />
+                      <span className="text-sm font-medium">Video</span>
                     </Button>
                   </div>
                   <Button 
@@ -348,6 +363,17 @@ export default function FeedPage() {
                       {post.content}
                     </p>
 
+                    {/* Post Image */}
+                    {(post as any).image && (
+                      <div className="mb-4 rounded-lg overflow-hidden border border-border/50">
+                        <img 
+                          src={(post as any).image || "/placeholder.svg"} 
+                          alt="Post content" 
+                          className="w-full h-auto max-h-[500px] object-cover"
+                        />
+                      </div>
+                    )}
+
                     {/* Engagement Stats */}
                     <div className="flex items-center justify-between text-sm text-muted-foreground py-2 border-y border-border/50">
                       <span className="hover:text-primary cursor-pointer hover:underline">
@@ -418,7 +444,7 @@ export default function FeedPage() {
                         size="icon"
                         onClick={() => toggleSave(post.id)}
                         className={`h-10 w-10 rounded-lg transition-colors ${
-                          isSaved ? 'text-primary hover:text-primary/80' : 'text-muted-foreground hover:text-primary hover:bg-primary/5'
+                          isSaved ? 'text-primary hover:text-primary hover:bg-transparent' : 'text-muted-foreground hover:text-primary hover:bg-primary/5'
                         }`}
                       >
                         <Bookmark className={`h-[18px] w-[18px] ${isSaved ? 'fill-current' : ''}`} />
@@ -427,7 +453,34 @@ export default function FeedPage() {
 
                     {/* Comment Section */}
                     {showComments === post.id && (
-                      <div className="mt-4 pt-4 border-t border-border/50">
+                      <div className="border-t border-border/50 pt-4 space-y-4">
+                        {/* Existing comments */}
+                        {(post as any).commentsList && (post as any).commentsList.length > 0 && (
+                          <div className="space-y-3 mb-4">
+                            {(post as any).commentsList.map((comment: any) => {
+                              const commentUser = users.get(comment.author_id);
+                              return (
+                                <div key={comment.id} className="flex gap-3">
+                                  <Avatar className="h-8 w-8 flex-shrink-0">
+                                    <AvatarImage src={commentUser?.avatar || "/placeholder.svg"} />
+                                    <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                                      {comment.author_name?.charAt(0) || 'U'}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div className="flex-1 bg-secondary/50 rounded-xl p-3">
+                                    <p className="font-semibold text-sm text-foreground">{comment.author_name}</p>
+                                    <p className="text-sm text-foreground mt-1">{comment.content}</p>
+                                    <p className="text-xs text-muted-foreground mt-2">
+                                      {formatTimeAgo(comment.created_at)}
+                                    </p>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                        
+                        {/* Comment input */}
                         <div className="flex gap-3">
                           <Avatar className="h-9 w-9 ring-2 ring-border flex-shrink-0">
                             <AvatarImage src={currentUser?.avatar || "/placeholder.svg"} />

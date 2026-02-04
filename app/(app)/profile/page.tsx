@@ -7,8 +7,9 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Edit3, Check, X } from 'lucide-react';
+import { Edit3, Check, X, Camera, ThumbsUp, MessageCircle, Share2, Plus } from 'lucide-react';
 import { getCurrentUser } from '@/lib/auth';
+import { formatTimeAgo } from '@/lib/utils'; // Assuming formatTimeAgo is declared in utils.js
 
 export default function ProfilePage() {
   const currentUser = getCurrentUser();
@@ -35,6 +36,14 @@ export default function ProfilePage() {
         company: 'Shopify',
         period: '2018 - 2021',
         description: 'Built merchant-facing features and improved checkout conversion rates by 25%.'
+      }
+    ],
+    education: [
+      {
+        id: 1,
+        degree: 'Computer Science, B.S.',
+        school: 'University of California, Berkeley',
+        year: '2016'
       }
     ]
   });
@@ -66,6 +75,14 @@ export default function ProfilePage() {
           company: 'Shopify',
           period: '2018 - 2021',
           description: 'Built merchant-facing features and improved checkout conversion rates by 25%.'
+        }
+      ],
+      education: [
+        {
+          id: 1,
+          degree: 'Computer Science, B.S.',
+          school: 'University of California, Berkeley',
+          year: '2016'
         }
       ]
     });
@@ -123,18 +140,59 @@ export default function ProfilePage() {
     <div className="min-h-screen bg-secondary/20">
       <div className="max-w-5xl mx-auto p-6">
         {/* Profile Header */}
-        <Card className="overflow-hidden mb-6">
+        <Card className="overflow-hidden mb-6 relative">
           {/* Banner */}
-          <div className="h-48 bg-gradient-to-r from-primary via-accent to-primary bg-[length:200%_100%] animate-gradient" />
+          <div className="h-56 bg-gradient-to-r from-primary via-accent to-primary bg-[length:200%_100%] animate-gradient relative">
+            {isEditMode && (
+              <Input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                id="cover-upload"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    console.log('[v0] Cover photo selected:', file.name);
+                  }
+                }}
+              />
+            )}
+          </div>
 
           {/* Profile Info */}
-          <div className="px-6 pb-6 pt-6">
-            <div className="flex flex-col md:flex-row md:items-start md:justify-between -mt-16 relative z-10 mb-6">
+          <div className="px-6 pb-6">
+            <div className="flex flex-col md:flex-row md:items-start md:justify-between -mt-20 relative z-10 mb-6">
               <div className="flex flex-col md:flex-row items-start gap-4">
-                <Avatar className="h-32 w-32 border-4 border-card ring-2 ring-primary/20">
-                  <AvatarImage src={currentUser?.avatar || "https://github.com/shadcn.png"} />
-                  <AvatarFallback>{currentUser?.name?.charAt(0) || 'U'}</AvatarFallback>
-                </Avatar>
+                <div className="relative">
+                  <Avatar className="h-36 w-36 border-4 border-card ring-4 ring-background shadow-xl">
+                    <AvatarImage src={currentUser?.avatar || "https://github.com/shadcn.png"} />
+                    <AvatarFallback>{currentUser?.name?.charAt(0) || 'U'}</AvatarFallback>
+                  </Avatar>
+                  {isEditMode && (
+                    <>
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        id="avatar-upload"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            console.log('[v0] Profile photo selected:', file.name);
+                          }
+                        }}
+                      />
+                      <Button
+                        size="icon"
+                        variant="secondary"
+                        className="absolute bottom-0 right-0 h-8 w-8 rounded-full shadow-md"
+                        onClick={() => document.getElementById('avatar-upload')?.click()}
+                      >
+                        <Camera className="h-4 w-4" />
+                      </Button>
+                    </>
+                  )}
+                </div>
                 <div className="mt-2">
                   {isEditMode ? (
                     <div className="space-y-2">
@@ -159,51 +217,18 @@ export default function ProfilePage() {
                     </div>
                   ) : (
                     <>
-                      <h1 className="text-3xl font-bold text-foreground">{formData.name || 'John Doe'}</h1>
-                      <p className="text-lg text-muted-foreground">{formData.title}</p>
+                      <h1 className="text-3xl font-bold text-foreground mt-2">{formData.name || 'John Doe'}</h1>
+                      <p className="text-lg text-foreground/80 font-medium">{formData.title}</p>
                       <p className="text-sm text-muted-foreground mt-1">{formData.location}</p>
                     </>
                   )}
                 </div>
               </div>
-              {isSelfProfile && (
-                <div className="flex gap-2 mt-4 md:mt-0">
-                  {isEditMode ? (
-                    <>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        className="gap-2 bg-transparent"
-                        onClick={handleCancel}
-                      >
-                        <X className="h-4 w-4" />
-                        Cancel
-                      </Button>
-                      <Button 
-                        size="sm"
-                        className="gap-2"
-                        onClick={handleSave}
-                      >
-                        <Check className="h-4 w-4" />
-                        Save
-                      </Button>
-                    </>
-                  ) : (
-                    <Button 
-                      variant="outline" 
-                      className="gap-2 bg-transparent"
-                      onClick={() => setIsEditMode(true)}
-                    >
-                      <Edit3 className="h-4 w-4" />
-                      Edit Profile
-                    </Button>
-                  )}
-                </div>
-              )}
             </div>
 
-            {/* Bio */}
+            {/* About */}
             <div className="mb-6">
+              <h3 className="font-semibold text-foreground mb-3">About</h3>
               {isEditMode ? (
                 <Textarea
                   value={formData.bio}
@@ -360,18 +385,133 @@ export default function ProfilePage() {
             </div>
 
             {/* Education */}
-            <div>
-              <h3 className="font-semibold text-foreground mb-3">Education</h3>
-              <div className="flex items-start gap-3">
-                <div className="h-12 w-12 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
-                  <span className="text-sm font-bold text-foreground">UC</span>
-                </div>
-                <div>
-                  <h4 className="font-semibold text-foreground">Computer Science, B.S.</h4>
-                  <p className="text-sm text-muted-foreground">University of California, Berkeley • 2016</p>
-                </div>
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-semibold text-foreground">Education</h3>
+                {isEditMode && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const newId = Math.max(...formData.education.map((e: any) => e.id), 0) + 1;
+                      setFormData({
+                        ...formData,
+                        education: [...formData.education, { id: newId, degree: '', school: '', year: '' }]
+                      });
+                    }}
+                    className="bg-transparent gap-2 h-8"
+                  >
+                    <Plus className="h-3 w-3" />
+                    Add Education
+                  </Button>
+                )}
               </div>
+              {isEditMode ? (
+                <div className="space-y-4">
+                  {formData.education.map((edu: any, index: number) => (
+                    <div key={edu.id} className="space-y-3 p-4 border border-border rounded-lg relative">
+                      {formData.education.length > 1 && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            setFormData({
+                              ...formData,
+                              education: formData.education.filter((e: any) => e.id !== edu.id)
+                            });
+                          }}
+                          className="absolute top-2 right-2 h-7 w-7"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                      <Input
+                        value={edu.degree}
+                        onChange={(e) => {
+                          const updated = formData.education.map((e: any) => 
+                            e.id === edu.id ? {...e, degree: e.target.value} : e
+                          );
+                          setFormData({...formData, education: updated});
+                        }}
+                        placeholder="Degree and Field of Study"
+                      />
+                      <Input
+                        value={edu.school}
+                        onChange={(e) => {
+                          const updated = formData.education.map((e: any) => 
+                            e.id === edu.id ? {...e, school: e.target.value} : e
+                          );
+                          setFormData({...formData, education: updated});
+                        }}
+                        placeholder="School or University"
+                      />
+                      <Input
+                        value={edu.year}
+                        onChange={(e) => {
+                          const updated = formData.education.map((e: any) => 
+                            e.id === edu.id ? {...e, year: e.target.value} : e
+                          );
+                          setFormData({...formData, education: updated});
+                        }}
+                        placeholder="Graduation Year"
+                      />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {formData.education.map((edu: any) => (
+                    <div key={edu.id} className="flex items-start gap-3">
+                      <div className="h-12 w-12 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                        <span className="text-sm font-bold text-foreground">
+                          {edu.school.split(' ').map((w: string) => w[0]).join('').slice(0, 2)}
+                        </span>
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-foreground">{edu.degree}</h4>
+                        <p className="text-sm text-muted-foreground">{edu.school} • {edu.year}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
+
+            {/* Edit Button - Bottom Right */}
+            {isSelfProfile && !isEditMode && (
+              <div className="flex justify-end pt-4 border-t border-border/50">
+                <Button 
+                  variant="outline" 
+                  className="gap-2 bg-transparent"
+                  onClick={() => setIsEditMode(true)}
+                >
+                  <Edit3 className="h-4 w-4" />
+                  Edit Profile
+                </Button>
+              </div>
+            )}
+            
+            {isSelfProfile && isEditMode && (
+              <div className="flex justify-end gap-2 pt-4 border-t border-border/50">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="gap-2 bg-transparent"
+                  onClick={handleCancel}
+                >
+                  <X className="h-4 w-4" />
+                  Cancel
+                </Button>
+                <Button 
+                  size="sm"
+                  className="gap-2"
+                  onClick={handleSave}
+                >
+                  <Check className="h-4 w-4" />
+                  Save
+                </Button>
+              </div>
+            )}
           </div>
         </Card>
 
@@ -379,23 +519,76 @@ export default function ProfilePage() {
         <div>
           <h2 className="text-2xl font-bold text-foreground mb-4">Recent Posts</h2>
           <div className="space-y-4">
-            {[1, 2].map((i) => (
-              <Card key={i} className="p-6">
-                <p className="text-foreground mb-3">
-                  Just completed a workshop on advanced React patterns. The key takeaway: composition over inheritance leads to more maintainable code.
-                </p>
-                <div className="flex gap-4 text-sm text-muted-foreground">
-                  <button className="hover:text-primary transition-colors">Like</button>
-                  <button className="hover:text-primary transition-colors">Comment</button>
-                  <button className="hover:text-primary transition-colors">Share</button>
+            {[
+              {
+                id: 1,
+                content: 'Just completed a workshop on advanced React patterns. The key takeaway: composition over inheritance leads to more maintainable code.',
+                likes: 45,
+                comments: 12,
+                shares: 5,
+                created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
+              },
+              {
+                id: 2,
+                content: 'Excited to announce that I will be speaking at React Conf 2024! Looking forward to sharing insights on building scalable applications.',
+                likes: 89,
+                comments: 24,
+                shares: 15,
+                created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+              }
+            ].map((post) => (
+              <Card key={post.id} className="p-5 shadow-sm border-border/50 hover:shadow-md transition-shadow duration-200">
+                {/* Post Header */}
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex gap-3">
+                    <Avatar className="h-11 w-11 ring-2 ring-border">
+                      <AvatarImage src={currentUser?.avatar || "https://github.com/shadcn.png"} />
+                      <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                        {currentUser?.name?.charAt(0)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="font-semibold text-foreground">{currentUser?.name}</p>
+                      <p className="text-sm text-muted-foreground leading-tight">{formData.title}</p>
+                      <p className="text-xs text-muted-foreground/70 mt-0.5">
+                        {formatTimeAgo(post.created_at)}
+                      </p>
+                    </div>
+                  </div>
                 </div>
-          </Card>
-        ))}
+
+                {/* Post Content */}
+                <p className="text-foreground leading-relaxed mb-4">{post.content}</p>
+
+                {/* Engagement Stats */}
+                <div className="flex items-center justify-between text-sm text-muted-foreground py-2 border-y border-border/50">
+                  <span>{post.likes} likes</span>
+                  <div className="flex gap-3">
+                    <span>{post.comments} comments</span>
+                    <span>{post.shares} shares</span>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex items-center justify-around pt-2">
+                  <Button variant="ghost" className="flex-1 gap-2 rounded-lg hover:bg-secondary h-10">
+                    <ThumbsUp className="h-4 w-4" />
+                    <span className="font-medium">Like</span>
+                  </Button>
+                  <Button variant="ghost" className="flex-1 gap-2 rounded-lg hover:bg-secondary h-10">
+                    <MessageCircle className="h-4 w-4" />
+                    <span className="font-medium">Comment</span>
+                  </Button>
+                  <Button variant="ghost" className="flex-1 gap-2 rounded-lg hover:bg-secondary h-10">
+                    <Share2 className="h-4 w-4" />
+                    <span className="font-medium">Share</span>
+                  </Button>
+                </div>
+              </Card>
+            ))}
           </div>
         </div>
       </div>
-
-
     </div>
   );
 }

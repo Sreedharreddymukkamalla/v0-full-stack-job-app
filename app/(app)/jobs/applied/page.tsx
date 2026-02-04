@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -11,7 +13,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Building, MapPin, Clock, ExternalLink } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Building, MapPin, Clock, ExternalLink, Plus, Upload } from 'lucide-react';
 
 type ApplicationStatus = 'under_review' | 'interview' | 'rejected' | 'accepted';
 
@@ -60,7 +70,7 @@ const applications = [
 
 const statusConfig = {
   under_review: { label: 'Under Review', color: 'bg-blue-500/10 text-blue-700 dark:text-blue-400' },
-  interview: { label: 'Interview', color: 'bg-accent/20 text-accent-foreground' },
+  interview: { label: 'Interview', color: 'bg-amber-500/20 text-amber-700 dark:text-amber-400' },
   rejected: { label: 'Not Selected', color: 'bg-destructive/10 text-destructive' },
   accepted: { label: 'Accepted', color: 'bg-green-500/10 text-green-700 dark:text-green-400' },
 };
@@ -69,17 +79,135 @@ export default function JobsAppliedPage() {
   const [applicationStatuses, setApplicationStatuses] = useState<Record<number, ApplicationStatus>>(
     applications.reduce((acc, app) => ({ ...acc, [app.id]: app.status }), {})
   );
+  const [isAddJobOpen, setIsAddJobOpen] = useState(false);
+  const [newJob, setNewJob] = useState({
+    jobTitle: '',
+    company: '',
+    location: '',
+    jobUrl: '',
+    resume: null as File | null,
+  });
 
   const handleStatusChange = (appId: number, newStatus: ApplicationStatus) => {
     setApplicationStatuses(prev => ({ ...prev, [appId]: newStatus }));
   };
 
+  const handleAddJob = () => {
+    console.log('[v0] Adding job:', newJob);
+    setIsAddJobOpen(false);
+    setNewJob({
+      jobTitle: '',
+      company: '',
+      location: '',
+      jobUrl: '',
+      resume: null,
+    });
+  };
+
   return (
     <div className="min-h-screen bg-secondary/20">
       <div className="max-w-5xl mx-auto p-6">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2">Jobs Applied</h1>
-          <p className="text-muted-foreground">Track your job applications and their status</p>
+        <div className="mb-8 flex items-start justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground mb-2">Jobs Applied</h1>
+            <p className="text-muted-foreground">Track your job applications and their status</p>
+          </div>
+          <Dialog open={isAddJobOpen} onOpenChange={setIsAddJobOpen}>
+            <DialogTrigger asChild>
+              <Button className="gap-2">
+                <Plus className="h-4 w-4" />
+                Add Job
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[500px]">
+              <DialogHeader>
+                <DialogTitle>Add Job Application</DialogTitle>
+                <DialogDescription>
+                  Manually add a job application you've submitted
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 mt-4">
+                <div className="space-y-2">
+                  <Label htmlFor="job-title">Job Title *</Label>
+                  <Input
+                    id="job-title"
+                    value={newJob.jobTitle}
+                    onChange={(e) => setNewJob({...newJob, jobTitle: e.target.value})}
+                    placeholder="e.g. Senior Frontend Engineer"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="company">Company *</Label>
+                  <Input
+                    id="company"
+                    value={newJob.company}
+                    onChange={(e) => setNewJob({...newJob, company: e.target.value})}
+                    placeholder="e.g. Vercel"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="location">Location</Label>
+                  <Input
+                    id="location"
+                    value={newJob.location}
+                    onChange={(e) => setNewJob({...newJob, location: e.target.value})}
+                    placeholder="e.g. San Francisco, CA"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="job-url">Job URL</Label>
+                  <Input
+                    id="job-url"
+                    value={newJob.jobUrl}
+                    onChange={(e) => setNewJob({...newJob, jobUrl: e.target.value})}
+                    placeholder="https://..."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="resume">Resume (PDF or DOCX)</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="resume"
+                      type="file"
+                      accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          setNewJob({...newJob, resume: file});
+                        }
+                      }}
+                      className="hidden"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full bg-transparent gap-2"
+                      onClick={() => document.getElementById('resume')?.click()}
+                    >
+                      <Upload className="h-4 w-4" />
+                      {newJob.resume ? newJob.resume.name : 'Upload Resume'}
+                    </Button>
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsAddJobOpen(false)}
+                    className="bg-transparent"
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    onClick={handleAddJob}
+                    disabled={!newJob.jobTitle || !newJob.company}
+                  >
+                    Add Application
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
 
         <div className="space-y-4">
