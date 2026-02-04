@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ChevronLeft, ChevronRight, Briefcase, MapPin, Clock, Users2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Briefcase, MapPin, Clock, Users2, Pin } from 'lucide-react';
 import { MOCK_JOBS, MOCK_USERS } from '@/lib/mock-data';
 import { getCurrentUser } from '@/lib/auth';
 
@@ -74,7 +74,7 @@ export function FeedSidebar() {
       <Card className="p-5 shadow-sm border-border/50">
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-2">
-            <Briefcase className="h-5 w-5 text-foreground" />
+            <Pin className="h-5 w-5 text-foreground" />
             <h2 className="font-bold text-lg text-foreground">Latest Jobs</h2>
           </div>
           
