@@ -119,3 +119,26 @@ export async function getUserConversations(userId: number) {
     throw err;
   }
 }
+
+export async function getHomePageData(userId?: number) {
+  if (!isSupabaseConfigured()) {
+    throw new Error('Supabase is not configured.');
+  }
+
+  const client = getSupabaseClient();
+  
+  try {
+    const { data, error } = await client.rpc('get_home_page_data', {
+      current_user_id: userId || null,
+    });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return data || { feed: [], latest_jobs: [], suggestions: [] };
+  } catch (err) {
+    console.error('[v0] Error fetching home page data:', err);
+    throw err;
+  }
+}
