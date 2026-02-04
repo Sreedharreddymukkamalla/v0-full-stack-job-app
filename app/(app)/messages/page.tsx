@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect } from "react"
-
 import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -26,8 +25,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { getUserConversations } from '@/lib/supabase';
 
-const conversations = [
+const mockConversations = [
   {
     id: 1,
     name: 'Sarah Chen',
@@ -108,13 +108,50 @@ const messages = [
   },
 ];
 
+const conversations = mockConversations; // Declare the conversations variable
+
 export default function MessagesPage() {
-  const [conversationList, setConversationList] = useState(conversations);
+  const [conversationList, setConversationList] = useState(mockConversations);
   const [messageInput, setMessageInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [mutedConversations, setMutedConversations] = useState<Set<number>>(new Set());
   const [blockedUsers, setBlockedUsers] = useState<Set<number>>(new Set());
   const [selectedConversation, setSelectedConversation] = useState<number>(1);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch conversations from RPC on component mount
+  useEffect(() => {
+    const fetchConversations = async () => {
+      try {
+        // Get current user ID from localStorage (set during auth)
+        const currentUser = typeof window !== 'undefined' ? localStorage.getItem('currentUser') : null;
+        if (!currentUser) {
+          console.log('[v0] No current user, using mock conversations');
+          setLoading(false);
+          return;
+        }
+
+        const user = JSON.parse(currentUser);
+        const userId = user.id;
+
+        console.log('[v0] Fetching conversations for user:', userId);
+        const data = await getUserConversations(userId);
+        console.log('[v0] Fetched conversations:', data);
+
+        // Transform RPC data to match component structure if needed
+        if (data && Array.isArray(data)) {
+          setConversationList(data);
+        }
+      } catch (error) {
+        console.error('[v0] Error fetching conversations:', error);
+        // Fall back to mock conversations on error
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchConversations();
+  }, []);
 
   // Check if we should open a specific conversation (client-side only)
   useEffect(() => {
@@ -122,11 +159,11 @@ export default function MessagesPage() {
       const messageUser = sessionStorage.getItem('messageUser');
       if (messageUser) {
         sessionStorage.removeItem('messageUser');
-        const conv = conversations.find(c => c.name === messageUser);
+        const conv = conversationList.find((c: any) => c.name === messageUser || c.user?.name === messageUser);
         setSelectedConversation(conv?.id || 1);
       }
     }
-  }, []);
+  }, [conversationList]);
 
   const handleSendMessage = () => {
     if (messageInput.trim()) {

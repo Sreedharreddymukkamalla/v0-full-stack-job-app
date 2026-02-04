@@ -5,11 +5,11 @@ Your AImploy platform now includes everything needed to test without a backend!
 ## What's Ready
 
 ### Demo Credentials Available on Sign In Page
-```
+\`\`\`
 Job Seeker:    demo@example.com / demo123456
 Recruiter:     recruiter@example.com / recruiter123
 Hiring Manager: hiring@example.com / hiring123456
-```
+\`\`\`
 
 ### Mock Data Features
 - Post feed with sample posts, likes, and comments
@@ -22,14 +22,14 @@ Hiring Manager: hiring@example.com / hiring123456
 ### Environment Variables (Optional)
 
 **To force mock mode:**
-```bash
+\`\`\`bash
 NEXT_PUBLIC_USE_MOCK_DATA=true
-```
+\`\`\`
 
 **To use real backend when available:**
-```bash
+\`\`\`bash
 NEXT_PUBLIC_API_URL=https://your-api.com/api
-```
+\`\`\`
 
 ## Files Added
 

@@ -192,7 +192,7 @@ Welcome to AImploy! This document serves as your guide to the complete project d
 
 ## 🔗 File Structure Reference
 
-```
+\`\`\`
 Documentation/
 ├── README.md                    # Project overview
 ├── SETUP.md                     # Implementation guide
@@ -220,13 +220,13 @@ Code/
 ├── types/                      # TypeScript definitions
 │   └── index.ts                # Type definitions
 └── public/                     # Static assets
-```
+\`\`\`
 
 ---
 
 ## ⚡ Quick Commands
 
-```bash
+\`\`\`bash
 # Development
 npm install          # Install dependencies
 npm run dev         # Start dev server
@@ -241,7 +241,7 @@ npm start           # Start production server
 
 # Deployment
 vercel             # Deploy to Vercel
-```
+\`\`\`
 
 ---
 

@@ -1,11 +1,39 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ArrowRight, Briefcase, MessageSquare, Users, Zap, CheckCircle, Sparkles } from 'lucide-react';
 import Link from 'next/link';
+import { getHomePageData } from '@/lib/supabase';
+
+interface HomePageData {
+  feed: any[];
+  latest_jobs: any[];
+  suggestions: any[];
+}
 
 export default function LandingPage() {
+  const [homeData, setHomeData] = useState<HomePageData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchHomeData = async () => {
+      try {
+        const data = await getHomePageData();
+        console.log('[v0] Fetched home page data:', data);
+        setHomeData(data);
+      } catch (error) {
+        console.error('[v0] Error fetching home page data:', error);
+        // Continue with default empty state if fetch fails
+        setHomeData({ feed: [], latest_jobs: [], suggestions: [] });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchHomeData();
+  }, []);
   return (
     <div className="flex flex-col min-h-screen bg-background">
       {/* Navigation */}

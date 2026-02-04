@@ -113,18 +113,18 @@ AImploy is a **full-featured, professionally designed job networking platform** 
 
 ## Technology Stack
 
-```
+\`\`\`
 Frontend: Next.js 16 (App Router)
 Language: TypeScript
 Styling: Tailwind CSS v4
 UI Kit: shadcn/ui (40+ components)
 Icons: Lucide React
 State: React Hooks (ready for SWR/Zustand)
-```
+\`\`\`
 
 ## File Organization
 
-```
+\`\`\`
 📁 AImploy Frontend
 ├── 📂 app/
 │   ├── 📂 (app)/          # Protected app routes
@@ -161,17 +161,17 @@ State: React Hooks (ready for SWR/Zustand)
 ├── README.md              # Project guide
 ├── SETUP.md               # Implementation guide
 └── ... config files
-```
+\`\`\`
 
 ## Key Implementation Details
 
 ### Authentication Flow
-```
+\`\`\`
 Landing Page → SignIn/SignUp → App (Protected) → Dashboard
-```
+\`\`\`
 
 ### Navigation Structure
-```
+\`\`\`
 Sidebar (Fixed/Collapsible)
 ├── Main Section
 │   ├── Home
@@ -187,7 +187,7 @@ Sidebar (Fixed/Collapsible)
 └── Secondary
     ├── Settings
     └── Search
-```
+\`\`\`
 
 ### Responsive Breakpoints
 - Mobile: < 768px (hamburger menu)
@@ -274,7 +274,7 @@ Sidebar (Fixed/Collapsible)
 
 ## Quick Start Commands
 
-```bash
+\`\`\`bash
 # Clone and install
 git clone <repo>
 cd aimploy
@@ -289,7 +289,7 @@ npm start
 
 # Deploy to Vercel
 vercel
-```
+\`\`\`
 
 ## Documentation Provided
 

@@ -2,7 +2,7 @@
 
 ## System Architecture
 
-```
+\`\`\`
 ┌─────────────────────────────────────────────────────────────────┐
 │                        USER BROWSER                              │
 ├─────────────────────────────────────────────────────────────────┤
@@ -38,11 +38,11 @@
         │      PostgreSQL Database                   │
         │   (Supabase / Neon / PlanetScale)         │
         └────────────────────────────────────────────┘
-```
+\`\`\`
 
 ## Page Hierarchy & Routes
 
-```
+\`\`\`
 PUBLIC ROUTES
 │
 ├─ / (Landing Page)
@@ -126,11 +126,11 @@ PROTECTED ROUTES (/(app))
    ├─ Notification Types
    ├─ Action Buttons
    └─ Mark as Read
-```
+\`\`\`
 
 ## Component Architecture
 
-```
+\`\`\`
 App Root
 ├── Public Routes
 │   ├── Landing Page
@@ -173,11 +173,11 @@ App Root
             ├── Users
             ├── Groups
             └── Notifications
-```
+\`\`\`
 
 ## Data Flow
 
-```
+\`\`\`
 User Action
     ↓
 React Component (Client)
@@ -197,11 +197,11 @@ Update Component State
 Re-render Component
     ↓
 Display to User
-```
+\`\`\`
 
 ## Authentication Flow
 
-```
+\`\`\`
 Landing Page
     ↓
 User clicks "Sign In" or "Get Started"
@@ -227,11 +227,11 @@ User clicks "Sign In" or "Get Started"
         Auto Sign In
             ↓
         Redirect to / (with onboarding)
-```
+\`\`\`
 
 ## Messaging Flow
 
-```
+\`\`\`
 User Opens Messaging Page
     ↓
 Fetch Conversations List
@@ -257,11 +257,11 @@ WebSocket broadcasts to recipient
 Recipient receives in real-time
     ↓
 Both parties see updated read status
-```
+\`\`\`
 
 ## Job Application Flow
 
-```
+\`\`\`
 User Browses Jobs (/jobs)
     ↓
 Filters/Searches for roles
@@ -288,11 +288,11 @@ Notification sent to recruiter
 User sees confirmation
     ↓
 Can view status in /jobs/applied
-```
+\`\`\`
 
 ## Real-time Features (Backend Implementation)
 
-```
+\`\`\`
 Message Sent
     ↓
 WebSocket Event Emitted
@@ -314,11 +314,11 @@ Same pattern for:
 - Job application status updates
 - New connections
 - Post reactions
-```
+\`\`\`
 
 ## File Organization Overview
 
-```
+\`\`\`
 aimploy/
 │
 ├── app/
@@ -394,11 +394,11 @@ aimploy/
 ├── tsconfig.json
 ├── next.config.mjs
 └── tailwind.config.ts                   # Tailwind configuration
-```
+\`\`\`
 
 ## Technology Stack Visualization
 
-```
+\`\`\`
 ┌──────────────────────────────────────────────────────────┐
 │                    Frontend Framework                      │
 │                      Next.js 16                           │
@@ -417,11 +417,11 @@ aimploy/
 │  Build: ESBuild + Turbopack (Next.js 16)                │
 │  Quality: TypeScript + Prettier + Tailwind CSS           │
 └──────────────────────────────────────────────────────────┘
-```
+\`\`\`
 
 ## Performance Optimization Strategy
 
-```
+\`\`\`
 Image Optimization
 ├─ Next.js Image component
 ├─ Automatic WebP conversion
@@ -442,7 +442,7 @@ Rendering
 ├─ Server Components (RSC) for layouts
 ├─ Client Components for interactions
 └─ Streaming for large content
-```
+\`\`\`
 
 ---
 

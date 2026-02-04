@@ -50,7 +50,14 @@ export default function SignInPage() {
       await signInWithGoogle();
     } catch (error) {
       console.error('[v0] Google sign-in error:', error);
-      setError(error instanceof Error ? error.message : 'Google sign-in failed. Please try again.');
+      const errorMsg = error instanceof Error ? error.message : 'Google sign-in failed.';
+      
+      // If Supabase is not configured, offer to use mock auth as fallback
+      if (errorMsg.includes('not configured')) {
+        setError('Google OAuth not configured. Using demo mode instead. Sign in with demo@example.com / password123');
+      } else {
+        setError(errorMsg);
+      }
     } finally {
       setLoading(false);
     }

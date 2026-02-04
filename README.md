@@ -45,7 +45,7 @@ A polished, professional job networking platform built with Next.js 16, TypeScri
 
 ## Project Structure
 
-```
+\`\`\`
 app/
 ├── (app)/                    # Protected app routes
 │   ├── page.tsx             # Feed/Home
@@ -71,7 +71,7 @@ components/
 ├── app-layout.tsx           # App wrapper with sidebar
 ├── header.tsx               # Top header bar
 └── ui/                      # shadcn/ui components
-```
+\`\`\`
 
 ## Getting Started
 
@@ -82,20 +82,20 @@ components/
 ### Installation
 
 1. Clone the repository
-```bash
+\`\`\`bash
 git clone <repo-url>
 cd aimploy
-```
+\`\`\`
 
 2. Install dependencies
-```bash
+\`\`\`bash
 npm install
-```
+\`\`\`
 
 3. Run the development server
-```bash
+\`\`\`bash
 npm run dev
-```
+\`\`\`
 
 4. Open http://localhost:3000 in your browser
 
@@ -135,13 +135,13 @@ The app uses a professional, cohesive design system:
 ## Component Architecture
 
 ### App Layout Structure
-```
+\`\`\`
 <SidebarProvider>
   <AppSidebar />        # Navigation (collapsible on mobile)
   <Header />            # Search bar and notifications
   <main>                # Page content
 </SidebarProvider>
-```
+\`\`\`
 
 ### Sidebar Navigation
 - Main: Home, Jobs, Messages, Notifications
@@ -192,10 +192,10 @@ To complete the full-stack implementation:
 
 Deploy to Vercel with one click:
 
-```bash
+\`\`\`bash
 npm install -g vercel
 vercel
-```
+\`\`\`
 
 Or use GitHub Actions for CI/CD.
 

@@ -61,15 +61,15 @@ The app automatically detects if a backend is available. If not found, it switch
 
 #### Option 2: Force Mock Mode
 Set this environment variable:
-```bash
+\`\`\`bash
 NEXT_PUBLIC_USE_MOCK_DATA=true
-```
+\`\`\`
 
 #### Option 3: Force Real API
 Set your API URL:
-```bash
+\`\`\`bash
 NEXT_PUBLIC_API_URL=https://your-backend-api.com/api
-```
+\`\`\`
 
 ### Local Storage Persistence
 
@@ -82,7 +82,7 @@ When using mock mode, user sessions are stored in browser's local storage:
 
 The `@/lib/auth.ts` module handles authentication:
 
-```typescript
+\`\`\`typescript
 import { signIn, getCurrentUser, signOut, isAuthenticated } from '@/lib/auth';
 
 // Sign in with email and password
@@ -98,19 +98,19 @@ if (isAuthenticated()) {
 
 // Sign out
 signOut();
-```
+\`\`\`
 
 ### API Helpers
 
 The `@/lib/api.ts` module intelligently handles API calls:
 
-```typescript
+\`\`\`typescript
 import { apiFetch } from '@/lib/api';
 
 // Fetches real data or mock data automatically
 const posts = await apiFetch('/posts');
 const jobs = await apiFetch('/jobs');
-```
+\`\`\`
 
 ### Transitioning to Real Backend
 
@@ -133,7 +133,7 @@ To add or modify mock data:
 3. Changes take effect immediately in development
 
 Example:
-```typescript
+\`\`\`typescript
 export const MOCK_USERS = [
   {
     id: '1',
@@ -143,7 +143,7 @@ export const MOCK_USERS = [
     // ... other fields
   },
 ];
-```
+\`\`\`
 
 ### Testing Tips
 

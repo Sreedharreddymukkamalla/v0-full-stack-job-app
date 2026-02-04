@@ -32,7 +32,7 @@ AImploy is a full-stack job networking platform that brings together job seekers
 ## Frontend Architecture
 
 ### Color System (Professional Theme)
-```css
+\`\`\`css
 Primary: oklch(0.24 0.045 264) - Deep Navy Blue
 Accent: oklch(0.65 0.12 192) - Teal/Cyan
 Secondary: oklch(0.5 0.06 200) - Slate Blue
@@ -43,11 +43,11 @@ Dark Mode:
 - Background: Deep Navy (#1A1F35 equivalent)
 - Text: Light Gray (#F5F5F5 equivalent)
 - Cards: Slightly lighter navy (#2A2F45 equivalent)
-```
+\`\`\`
 
 ### Component Hierarchy
 
-```
+\`\`\`
 Root Layout
 ├── Landing Page (/)
 ├── Auth Pages
@@ -68,7 +68,7 @@ Root Layout
         ├── Users (/users)
         ├── Groups (/groups)
         └── Notifications (/notifications)
-```
+\`\`\`
 
 ## Routing Structure
 
@@ -138,7 +138,7 @@ All routes under `/(app)` should require authentication:
 ### Phase 1: Backend Setup (After Frontend)
 
 1. **Database Schema**
-```sql
+\`\`\`sql
 -- Core tables needed
 users (id, email, firstName, lastName, avatar, bio, createdAt)
 profiles (userId, title, location, bio, skills)
@@ -151,7 +151,7 @@ companies (id, name, description, website, location)
 events (id, title, date, speakers, attendees)
 groups (id, name, description, members)
 notifications (id, userId, type, title, link, read, createdAt)
-```
+\`\`\`
 
 2. **Authentication**
 - Implement JWT or session-based auth
@@ -160,7 +160,7 @@ notifications (id, userId, type, title, link, read, createdAt)
 - Email verification
 
 3. **API Endpoints**
-```
+\`\`\`
 POST /api/auth/signup
 POST /api/auth/signin
 POST /api/auth/logout
@@ -186,7 +186,7 @@ GET /api/companies/:id
 
 GET /api/agent/execute
 GET /api/agent/history
-```
+\`\`\`
 
 4. **Real-time Features**
 - WebSocket for messaging
@@ -224,7 +224,7 @@ GET /api/agent/history
 ## Environment Variables
 
 Create `.env.local`:
-```
+\`\`\`
 NEXT_PUBLIC_API_URL=http://localhost:8000/api
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 
@@ -239,7 +239,7 @@ AI_GATEWAY_API_KEY=your_api_key
 # Optional: Supabase
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
-```
+\`\`\`
 
 ## Database Integration
 
@@ -270,7 +270,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
 
 ## File Structure Summary
 
-```
+\`\`\`
 aimploy/
 ├── app/
 │   ├── (app)/              # Protected routes with sidebar
@@ -297,7 +297,7 @@ aimploy/
 ├── tsconfig.json
 ├── next.config.mjs
 └── tailwind.config.ts
-```
+\`\`\`
 
 ## Next Features to Implement
 
@@ -329,7 +329,7 @@ aimploy/
 
 ## Development Workflow
 
-```bash
+\`\`\`bash
 # Install dependencies
 npm install
 
@@ -342,7 +342,7 @@ npm run build
 # Deploy
 npm run deploy
 # or just push to GitHub for Vercel auto-deploy
-```
+\`\`\`
 
 ## Support & Resources
 

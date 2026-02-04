@@ -43,13 +43,13 @@
 ## 🎨 Design System
 
 ### Color Palette (Professional)
-```
+\`\`\`
 Primary:      oklch(0.24 0.045 264) - Deep Navy
 Accent:       oklch(0.65 0.12 192) - Teal/Cyan
 Secondary:    oklch(0.5 0.06 200) - Slate
 Foreground:   oklch(0.95 0.002 0) - Off-white/White
 Background:   oklch(0.98 0.001 0) - Light/oklch(0.1 0.008 264) - Dark
-```
+\`\`\`
 
 ### Typography
 - **Font**: Geist (Sans) + Geist Mono
@@ -67,7 +67,7 @@ Background:   oklch(0.98 0.001 0) - Light/oklch(0.1 0.008 264) - Dark
 ## 🏗️ Architecture Highlights
 
 ### Project Structure
-```
+\`\`\`
 aimploy/
 ├── app/
 │   ├── (app)/           # Protected routes (11 pages)
@@ -88,7 +88,7 @@ aimploy/
 │   └── index.ts         # Type definitions
 └── public/
     └── assets
-```
+\`\`\`
 
 ### Key Features
 - ✅ Responsive design (mobile-first)
@@ -356,7 +356,7 @@ aimploy/
 
 ## 🏆 Project Status
 
-```
+\`\`\`
 Frontend Development:     ████████████████████ 100% ✅
 Design System:            ████████████████████ 100% ✅
 Documentation:            ████████████████████ 100% ✅
@@ -370,7 +370,7 @@ Backend Development:      ░░░░░░░░░░░░░░░░░░
 Database Setup:           ░░░░░░░░░░░░░░░░░░░░   0% ⏳
 API Integration:          ░░░░░░░░░░░░░░░░░░░░   0% ⏳
 Real-time Features:       ░░░░░░░░░░░░░░░░░░░░   0% ⏳
-```
+\`\`\`
 
 ---
 
