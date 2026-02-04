@@ -216,20 +216,10 @@ export default function UsersPage() {
                           </Avatar>
                         </div>
 
-                        <div className="text-center px-4 mb-4">
+                        <div className="text-center px-4 mb-6">
                           <h3 className="font-semibold text-lg text-foreground mb-1">{user.name}</h3>
                           <p className="text-sm text-primary font-medium">{user.title}</p>
                           <p className="text-xs text-muted-foreground mt-1">{user.company}</p>
-                        </div>
-
-                        <div className="px-4 mb-4">
-                          <div className="flex flex-wrap gap-1 justify-center">
-                            {user.skills.slice(0, 3).map((skill) => (
-                              <Badge key={skill} variant="secondary" className="text-xs">
-                                {skill}
-                              </Badge>
-                            ))}
-                          </div>
                         </div>
 
                         <div className="px-4 flex gap-2">
@@ -290,20 +280,10 @@ export default function UsersPage() {
                         </Avatar>
                       </div>
 
-                      <div className="text-center px-4 mb-4">
+                      <div className="text-center px-4 mb-6">
                         <h3 className="font-semibold text-lg text-foreground mb-1">{user.name}</h3>
                         <p className="text-sm text-primary font-medium">{user.title}</p>
                         <p className="text-xs text-muted-foreground mt-1">{user.company}</p>
-                      </div>
-
-                      <div className="px-4 mb-4">
-                        <div className="flex flex-wrap gap-1 justify-center">
-                          {user.skills.slice(0, 3).map((skill) => (
-                            <Badge key={skill} variant="secondary" className="text-xs">
-                              {skill}
-                            </Badge>
-                          ))}
-                        </div>
                       </div>
 
                       <div className="px-4 flex gap-2">

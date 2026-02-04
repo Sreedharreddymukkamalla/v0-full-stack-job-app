@@ -97,6 +97,10 @@ export default function JobsPage() {
   const [locationFilter, setLocationFilter] = useState('');
   const [companyFilter, setCompanyFilter] = useState('');
   const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [dateFilter, setDateFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('relevant');
+  const jobsPerPage = 10;
 
   const toggleSaveJob = (jobId: number) => {
     setSavedJobs(prev => {
@@ -116,6 +120,7 @@ export default function JobsPage() {
     setCompanyFilter('');
     setSearchQuery('');
     setActiveFilter('All Jobs');
+    setDateFilter('all');
   };
 
   const hasActiveFilters = experienceLevel !== 'all' || locationFilter || companyFilter;
@@ -124,178 +129,236 @@ export default function JobsPage() {
     <div className="max-w-6xl mx-auto px-4 py-4 space-y-4">
       {/* Search & Filter */}
       <Card className="p-3 border-border/50 shadow-sm">
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search jobs, companies, or skills..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 h-10 rounded-lg border-border/50 bg-secondary/30 focus:bg-background"
-            />
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col sm:flex-row gap-2">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search jobs..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 h-10 rounded-lg border-border/50 bg-secondary/30 focus:bg-background"
+              />
+            </div>
+            <div className="relative flex-1">
+              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Location"
+                value={locationFilter}
+                onChange={(e) => setLocationFilter(e.target.value)}
+                className="pl-9 h-10 rounded-lg border-border/50 bg-secondary/30 focus:bg-background"
+              />
+            </div>
+            <div className="relative flex-1">
+              <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Company"
+                value={companyFilter}
+                onChange={(e) => setCompanyFilter(e.target.value)}
+                className="pl-9 h-10 rounded-lg border-border/50 bg-secondary/30 focus:bg-background"
+              />
+            </div>
+            <Button 
+              variant="outline" 
+              className="h-10 rounded-lg gap-2 bg-transparent whitespace-nowrap"
+              onClick={() => setShowFilters(!showFilters)}
+            >
+              <SlidersHorizontal className="h-4 w-4" />
+              <span>More Filters</span>
+              {hasActiveFilters && experienceLevel !== 'all' && (
+                <Badge className="ml-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
+                  1
+                </Badge>
+              )}
+            </Button>
           </div>
-          <Button 
-            variant="outline" 
-            className="h-10 rounded-lg gap-2 bg-transparent"
-            onClick={() => setShowFilters(!showFilters)}
-          >
-            <SlidersHorizontal className="h-4 w-4" />
-            <span>Filters</span>
-            {hasActiveFilters && (
-              <Badge className="ml-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
-                {[experienceLevel !== 'all', locationFilter, companyFilter].filter(Boolean).length}
-              </Badge>
-            )}
-          </Button>
-        </div>
 
-        {/* Advanced Filters */}
-        {showFilters && (
-          <div className="mt-4 pt-4 border-t border-border space-y-4">
-            <div className="grid sm:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">Experience Level</Label>
-                <Select value={experienceLevel} onValueChange={setExperienceLevel}>
-                  <SelectTrigger className="h-10 rounded-xl">
-                    <SelectValue placeholder="Select level" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Levels</SelectItem>
-                    <SelectItem value="entry">Entry Level</SelectItem>
-                    <SelectItem value="mid">Mid Level</SelectItem>
-                    <SelectItem value="senior">Senior Level</SelectItem>
-                    <SelectItem value="lead">Lead/Principal</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">Location</Label>
-                <div className="relative">
-                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search location..."
-                    value={locationFilter}
-                    onChange={(e) => setLocationFilter(e.target.value)}
-                    className="pl-9 h-10 rounded-xl"
-                  />
+          {/* Advanced Filters */}
+          {showFilters && (
+            <div className="pt-3 border-t border-border space-y-3">
+              <div className="flex items-center gap-4">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Experience Level</Label>
+                  <Select value={experienceLevel} onValueChange={setExperienceLevel}>
+                    <SelectTrigger className="h-10 rounded-xl w-[200px]">
+                      <SelectValue placeholder="Select level" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Levels</SelectItem>
+                      <SelectItem value="entry">Entry Level</SelectItem>
+                      <SelectItem value="mid">Mid Level</SelectItem>
+                      <SelectItem value="senior">Senior Level</SelectItem>
+                      <SelectItem value="lead">Lead/Principal</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">Company</Label>
-                <div className="relative">
-                  <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search company..."
-                    value={companyFilter}
-                    onChange={(e) => setCompanyFilter(e.target.value)}
-                    className="pl-9 h-10 rounded-xl"
-                  />
-                </div>
+                {hasActiveFilters && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearFilters}
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10 mt-6"
+                  >
+                    <X className="h-4 w-4 mr-1.5" />
+                    Clear all filters
+                  </Button>
+                )}
               </div>
             </div>
+          )}
 
-            {hasActiveFilters && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={clearFilters}
-                className="text-destructive hover:text-destructive hover:bg-destructive/10"
-              >
-                <X className="h-4 w-4 mr-1.5" />
-                Clear all filters
-              </Button>
-            )}
+          <div className="flex gap-2 mt-4 overflow-x-auto pb-1 items-center justify-between">
+            <div className="flex gap-2">
+              {filterTabs.map((tab) => (
+                <Button
+                  key={tab}
+                  variant={activeFilter === tab ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setActiveFilter(tab)}
+                  className={`rounded-full px-4 h-8 whitespace-nowrap ${
+                    activeFilter !== tab ? 'bg-transparent hover:bg-secondary' : ''
+                  }`}
+                >
+                  {tab}
+                </Button>
+              ))}
+            </div>
+            <div className="flex gap-2 items-center">
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger className="h-8 w-[140px] rounded-full text-sm">
+                  <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="relevant">Most Relevant</SelectItem>
+                  <SelectItem value="recent">Most Recent</SelectItem>
+                  <SelectItem value="salary_high">Salary: High to Low</SelectItem>
+                  <SelectItem value="salary_low">Salary: Low to High</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={dateFilter} onValueChange={setDateFilter}>
+                <SelectTrigger className="h-8 w-[140px] rounded-full text-sm">
+                  <SelectValue placeholder="Date posted" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Any time</SelectItem>
+                  <SelectItem value="24h">Last 24 hours</SelectItem>
+                  <SelectItem value="7d">Last 7 days</SelectItem>
+                  <SelectItem value="30d">Last 30 days</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-        )}
-
-        <div className="flex gap-2 mt-4 overflow-x-auto pb-1">
-          {filterTabs.map((tab) => (
-            <Button
-              key={tab}
-              variant={activeFilter === tab ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setActiveFilter(tab)}
-              className={`rounded-full px-4 h-8 whitespace-nowrap ${
-                activeFilter !== tab ? 'bg-transparent hover:bg-secondary' : ''
-              }`}
-            >
-              {tab}
-            </Button>
-          ))}
         </div>
       </Card>
 
       {/* Jobs Grid */}
       <div className="grid lg:grid-cols-[380px_1fr] gap-4">
         {/* Jobs List */}
-        <div className="space-y-2 lg:h-[calc(100vh-180px)] lg:overflow-y-auto lg:pr-2">
-          {jobListings.map((job) => {
-            const isSaved = savedJobs.has(job.id);
-            
-            return (
-              <Card
-                key={job.id}
-                onClick={() => setSelectedJobId(job.id)}
-                className={`p-3 border-border/50 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer group ${
-                  selectedJobId === job.id ? 'ring-2 ring-primary bg-primary/5' : ''
-                }`}
-              >
-                <div className="flex items-start gap-2.5 mb-2">
-                  <div className={`h-9 w-9 rounded-lg bg-gradient-to-br ${job.logoColor} flex items-center justify-center text-white font-bold text-sm shadow-sm flex-shrink-0`}>
-                    {job.logo}
+        <div className="space-y-2">
+          {jobListings
+            .slice((currentPage - 1) * jobsPerPage, currentPage * jobsPerPage)
+            .map((job) => {
+              const isSaved = savedJobs.has(job.id);
+              
+              return (
+                <Card
+                  key={job.id}
+                  onClick={() => setSelectedJobId(job.id)}
+                  className={`p-3 border border-border shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer group ${
+                    selectedJobId === job.id ? 'ring-2 ring-primary bg-primary/5' : ''
+                  }`}
+                >
+                  <div className="flex items-start gap-2.5 mb-2">
+                    <div className={`h-9 w-9 rounded-lg bg-gradient-to-br ${job.logoColor} flex items-center justify-center text-white font-bold text-sm shadow-sm flex-shrink-0`}>
+                      {job.logo}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-sm text-foreground group-hover:text-primary transition-colors line-clamp-1">
+                        {job.title}
+                      </h3>
+                      <p className="text-xs text-muted-foreground">{job.company}</p>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-sm text-foreground group-hover:text-primary transition-colors line-clamp-1">
-                      {job.title}
-                    </h3>
-                    <p className="text-xs text-muted-foreground">{job.company}</p>
-                  </div>
-                </div>
 
-                <div className="space-y-1 mb-2 text-xs">
-                  <div className="flex items-center gap-1.5 text-muted-foreground">
-                    <MapPin className="h-3 w-3 flex-shrink-0" />
-                    <span className="truncate">{job.location}</span>
+                  <div className="space-y-1 mb-2 text-xs">
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <MapPin className="h-3 w-3 flex-shrink-0" />
+                      <span className="truncate">{job.location}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <DollarSign className="h-3 w-3 flex-shrink-0" />
+                      <span>{job.salary}</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1.5 text-muted-foreground">
-                    <DollarSign className="h-3 w-3 flex-shrink-0" />
-                    <span>{job.salary}</span>
+
+                  <div className="flex gap-1.5 mb-2">
+                    <Badge variant="secondary" className="rounded text-[10px] font-medium px-1.5 py-0.5">{job.type}</Badge>
+                    <Badge variant="secondary" className="rounded text-[10px] font-medium px-1.5 py-0.5">{job.level}</Badge>
                   </div>
-                </div>
 
-                <div className="flex gap-1.5 mb-2">
-                  <Badge variant="secondary" className="rounded text-[10px] font-medium px-1.5 py-0.5">{job.type}</Badge>
-                  <Badge variant="secondary" className="rounded text-[10px] font-medium px-1.5 py-0.5">{job.level}</Badge>
-                </div>
-
-                <div className="flex items-center justify-between pt-2 border-t border-border/50 text-[10px]">
-                  <span className="text-muted-foreground flex items-center gap-1">
-                    <Clock className="h-2.5 w-2.5" />
-                    {job.posted}
-                  </span>
-                  <span className="text-muted-foreground flex items-center gap-1">
-                    <TrendingUp className="h-2.5 w-2.5" />
-                    {job.applicants}
-                  </span>
-                </div>
+                  <div className="flex items-center justify-between pt-2 border-t border-border/50 text-[10px]">
+                    <span className="text-muted-foreground flex items-center gap-1">
+                      <Clock className="h-2.5 w-2.5" />
+                      {job.posted}
+                    </span>
+                    <span className="text-muted-foreground flex items-center gap-1">
+                      <TrendingUp className="h-2.5 w-2.5" />
+                      {job.applicants}
+                    </span>
+                  </div>
               </Card>
             );
           })}
+          
+          {/* Pagination */}
+          {jobListings.length > jobsPerPage && (
+            <div className="flex items-center justify-center gap-2 pt-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="bg-transparent"
+              >
+                Previous
+              </Button>
+              <div className="flex gap-1">
+                {Array.from({ length: Math.ceil(jobListings.length / jobsPerPage) }, (_, i) => i + 1).map(page => (
+                  <Button
+                    key={page}
+                    variant={currentPage === page ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setCurrentPage(page)}
+                    className={currentPage !== page ? "bg-transparent" : ""}
+                  >
+                    {page}
+                  </Button>
+                ))}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(p => Math.min(Math.ceil(jobListings.length / jobsPerPage), p + 1))}
+                disabled={currentPage === Math.ceil(jobListings.length / jobsPerPage)}
+                className="bg-transparent"
+              >
+                Next
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Job Details Panel */}
-        <div className="lg:h-[calc(100vh-180px)]">
+        <div>
           {selectedJobId ? (
-            <Card className="h-full flex flex-col border-border/50 shadow-sm">
+            <Card className="border-border/50 shadow-sm">
               {(() => {
                 const job = jobListings.find(j => j.id === selectedJobId);
                 if (!job) return null;
                 
                 return (
                   <>
-                    {/* Sticky Header with Actions */}
+                    {/* Header with Actions */}
                     <div className="p-5 border-b border-border/50 space-y-4">
                       <div className="flex items-start gap-4">
                         <div className={`h-14 w-14 rounded-xl bg-gradient-to-br ${job.logoColor} flex items-center justify-center text-white font-bold text-xl shadow-sm flex-shrink-0`}>
@@ -327,8 +390,8 @@ export default function JobsPage() {
                       </div>
                     </div>
 
-                    {/* Scrollable Content */}
-                    <div className="flex-1 overflow-y-auto p-5 space-y-6">
+                    {/* Content */}
+                    <div className="p-5 space-y-6">
                       {/* Key Details */}
                       <div className="space-y-3">
                         <div className="flex items-center gap-2 text-sm">

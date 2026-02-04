@@ -1,14 +1,16 @@
 'use client';
 
-import { useMemo, useEffect } from "react";
+import { useMemo, useEffect, useState } from "react";
 // @ts-ignore - ChatKit types
 import { ChatKit, useChatKit } from "@openai/chatkit-react";
 import { createClientSecretFetcher, workflowId } from "@/lib/chatkitSession";
 // @ts-ignore - ChatKit types
 import type { ChatKitOptions } from "@openai/chatkit";
 import { useSearchParams } from "next/navigation";
+import { AlertCircle } from "lucide-react";
 
 export function ChatKitPanel() {
+  const [error, setError] = useState<string | null>(null);
   const getClientSecret = useMemo(
     () => createClientSecretFetcher(workflowId),
     [],
@@ -63,6 +65,22 @@ export function ChatKitPanel() {
 
   const searchParams = useSearchParams();
 
+  // Check for ChatKit errors
+  useEffect(() => {
+    const checkChatKit = async () => {
+      try {
+        const secret = await getClientSecret();
+        if (!secret || secret.startsWith('mock_')) {
+          setError('ChatKit is not configured. Please set up OpenAI ChatKit workflow ID and API credentials.');
+        }
+      } catch (err) {
+        console.error('[v0] ChatKit initialization error:', err);
+        setError('Failed to initialize ChatKit. Please check your configuration.');
+      }
+    };
+    checkChatKit();
+  }, [getClientSecret]);
+
   // Helper: convert HTML -> plain text for safe composer content
   const htmlToText = (html?: string | null) => {
     if (!html) return "";
@@ -97,6 +115,24 @@ export function ChatKitPanel() {
     }, 10 * 60 * 1000);
     return () => clearInterval(id);
   }, []);
+
+  if (error) {
+    return (
+      <div className="flex h-[calc(100vh-8rem)] w-full rounded-xl bg-card border border-border shadow-sm">
+        <div className="flex flex-col items-center justify-center w-full gap-4 p-8 text-center">
+          <AlertCircle className="h-12 w-12 text-destructive" />
+          <div className="space-y-2">
+            <h3 className="text-lg font-semibold text-foreground">ChatKit Not Available</h3>
+            <p className="text-sm text-muted-foreground max-w-md">{error}</p>
+            <p className="text-xs text-muted-foreground mt-4">
+              To enable ChatKit, configure the NEXT_PUBLIC_CHATKIT_WORKFLOW_ID environment variable
+              and update the API route with your OpenAI credentials.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-[calc(100vh-8rem)] w-full rounded-xl bg-card border border-border shadow-sm">

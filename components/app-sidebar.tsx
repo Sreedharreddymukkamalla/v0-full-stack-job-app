@@ -44,6 +44,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { getCurrentUser, signOut } from '@/lib/auth';
@@ -62,6 +63,7 @@ const menuItems = [
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const { toggleSidebar, open } = useSidebar();
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
   const [reportForm, setReportForm] = useState({
     title: '',
@@ -87,8 +89,8 @@ export function AppSidebar() {
   return (
     <Sidebar className="border-r border-sidebar-border bg-sidebar">
       <SidebarHeader className="h-16 flex items-center justify-between px-6 border-b border-sidebar-border">
-        <span className="text-lg font-bold tracking-tight text-sidebar-foreground">AIMPLOY</span>
-        <Button variant="ghost" size="icon" className="h-8 w-8">
+        {open && <span className="text-lg font-bold tracking-tight text-sidebar-foreground">AIMPLOY</span>}
+        <Button variant="ghost" size="icon" className="h-8 w-8 mx-auto" onClick={toggleSidebar}>
           <PanelLeftClose className="h-4 w-4" />
         </Button>
       </SidebarHeader>
@@ -101,10 +103,11 @@ export function AppSidebar() {
                 asChild
                 isActive={isActive(item.href)}
                 className="h-12 rounded-lg transition-colors hover:bg-sidebar-accent data-[active=true]:bg-accent data-[active=true]:text-accent-foreground"
+                tooltip={!open ? item.label : undefined}
               >
-                <Link href={item.href} className="flex items-center gap-4 px-4">
+                <Link href={item.href} className={`flex items-center ${open ? 'gap-4 px-4' : 'justify-center px-0'}`}>
                   <item.icon className="h-5 w-5 flex-shrink-0" strokeWidth={2} />
-                  <span className="font-normal">{item.label}</span>
+                  {open && <span className="font-normal">{item.label}</span>}
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -118,10 +121,11 @@ export function AppSidebar() {
             <SidebarMenuButton
               onClick={() => setIsReportDialogOpen(true)}
               className="h-12 rounded-lg transition-colors hover:bg-sidebar-accent"
+              tooltip={!open ? "Report Issue" : undefined}
             >
-              <div className="flex items-center gap-4 px-4">
+              <div className={`flex items-center ${open ? 'gap-4 px-4' : 'justify-center px-0'}`}>
                 <Flag className="h-5 w-5 flex-shrink-0" strokeWidth={2} />
-                <span className="font-normal">Report Issue</span>
+                {open && <span className="font-normal">Report Issue</span>}
               </div>
             </SidebarMenuButton>
           </SidebarMenuItem>

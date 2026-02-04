@@ -133,7 +133,10 @@ export function Header() {
                     className={`flex items-start gap-3 p-3 cursor-pointer ${
                       !msg.read ? 'bg-primary/5' : ''
                     }`}
-                    onClick={() => router.push('/messages')}
+                    onClick={() => {
+                      sessionStorage.setItem('messageUser', msg.user);
+                      router.push('/messages');
+                    }}
                   >
                     <Avatar className="h-10 w-10 flex-shrink-0">
                       <AvatarImage src={msg.avatar || "/placeholder.svg"} />
@@ -161,7 +164,7 @@ export function Header() {
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="relative h-10 w-10 rounded-xl hover:bg-secondary">
+              <Button variant="ghost" size="icon" className="relative h-10 w-10 rounded-xl hover:bg-accent/10 hover:text-accent">
                 <Bell className="h-5 w-5" />
                 {unreadNotifCount > 0 && (
                   <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-destructive ring-2 ring-card" />
