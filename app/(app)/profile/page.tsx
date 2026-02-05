@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -8,45 +8,67 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Edit3, Check, X, Camera, ThumbsUp, MessageCircle, Share2, Plus } from 'lucide-react';
-import { getCurrentUser } from '@/lib/auth';
+import { getProfile, loadProfileFromApi } from '@/lib/profileStore';
 import { formatTimeAgo } from '@/lib/utils'; // Assuming formatTimeAgo is declared in utils.js
 
 export default function ProfilePage() {
-  const currentUser = getCurrentUser();
+  const [currentProfile, setCurrentProfile] = useState<any>(() => getProfile());
   const isSelfProfile = true; // This would normally check if viewing own profile
   const [isEditMode, setIsEditMode] = useState(false);
-  const [formData, setFormData] = useState({
-    name: currentUser?.name || '',
-    title: 'Senior Frontend Engineer',
-    location: 'San Francisco, CA',
-    bio: 'Passionate full-stack engineer with 8+ years building scalable web applications.',
-    skills: ['React', 'TypeScript', 'Next.js', 'Node.js', 'GraphQL', 'PostgreSQL', 'AWS', 'Docker', 'System Design'],
+  const [formData, setFormData] = useState<any>({
+    name: '',
+    title: '',
+    location: '',
+    bio: '',
+    skills: [] as string[],
     newSkill: '',
-    experiences: [
-      {
-        id: 1,
-        title: 'Senior Frontend Engineer',
-        company: 'Vercel',
-        period: '2021 - Present',
-        description: 'Led development of core platform features serving 2M+ developers. Improved performance by 40%.'
-      },
-      {
-        id: 2,
-        title: 'Frontend Engineer',
-        company: 'Shopify',
-        period: '2018 - 2021',
-        description: 'Built merchant-facing features and improved checkout conversion rates by 25%.'
-      }
-    ],
-    education: [
-      {
-        id: 1,
-        degree: 'Computer Science, B.S.',
-        school: 'University of California, Berkeley',
-        year: '2016'
-      }
-    ]
+    experiences: [] as any[],
+    education: [] as any[],
   });
+
+  // Load profile into local state on mount (re-populates after reload)
+  useEffect(() => {
+    if (currentProfile) {
+      // already have it
+      return;
+    }
+
+    loadProfileFromApi().then((p) => {
+      if (p) setCurrentProfile(p);
+    }).catch(() => null);
+  }, []);
+
+  // When profile is available, map it into the form state
+  useEffect(() => {
+    if (!currentProfile) return;
+
+    const p = currentProfile;
+    const mappedExperiences = (p.experience?.experience || []).map((e: any, idx: number) => ({
+      id: e.id || `exp-${idx}`,
+      title: e.title || e.job_title || '',
+      company: e.company || '',
+      period: `${e.startDate || e.start || ''} - ${e.endDate || e.end || 'Present'}`,
+      description: e.description || '',
+    }));
+
+    const mappedEducation = (p.experience?.education || []).map((ed: any, idx: number) => ({
+      id: ed.id || `edu-${idx}`,
+      degree: ed.degree || ed.field || '',
+      school: ed.school || '',
+      year: ed.endDate || ed.year || '',
+    }));
+
+    setFormData({
+      name: p.full_name || p.name || p.user?.full_name || '',
+      title: p.headline || p.title || '',
+      location: p.location || '',
+      bio: p.summary || p.about || '',
+      skills: p.skills || [],
+      newSkill: '',
+      experiences: mappedExperiences,
+      education: mappedEducation,
+    });
+  }, [currentProfile]);
 
   const handleSave = () => {
     console.log('[v0] Saving profile:', formData);
@@ -54,38 +76,6 @@ export default function ProfilePage() {
   };
 
   const handleCancel = () => {
-    setFormData({
-      name: currentUser?.name || '',
-      title: 'Senior Frontend Engineer',
-      location: 'San Francisco, CA',
-      bio: 'Passionate full-stack engineer with 8+ years building scalable web applications.',
-      skills: ['React', 'TypeScript', 'Next.js', 'Node.js', 'GraphQL', 'PostgreSQL', 'AWS', 'Docker', 'System Design'],
-      newSkill: '',
-      experiences: [
-        {
-          id: 1,
-          title: 'Senior Frontend Engineer',
-          company: 'Vercel',
-          period: '2021 - Present',
-          description: 'Led development of core platform features serving 2M+ developers. Improved performance by 40%.'
-        },
-        {
-          id: 2,
-          title: 'Frontend Engineer',
-          company: 'Shopify',
-          period: '2018 - 2021',
-          description: 'Built merchant-facing features and improved checkout conversion rates by 25%.'
-        }
-      ],
-      education: [
-        {
-          id: 1,
-          degree: 'Computer Science, B.S.',
-          school: 'University of California, Berkeley',
-          year: '2016'
-        }
-      ]
-    });
     setIsEditMode(false);
   };
 
@@ -165,8 +155,8 @@ export default function ProfilePage() {
               <div className="flex flex-col md:flex-row items-start gap-4">
                 <div className="relative">
                   <Avatar className="h-36 w-36 border-4 border-card ring-4 ring-background shadow-xl">
-                    <AvatarImage src={currentUser?.avatar || "https://github.com/shadcn.png"} />
-                    <AvatarFallback>{currentUser?.name?.charAt(0) || 'U'}</AvatarFallback>
+                    <AvatarImage src={currentProfile?.profile_image_url || currentProfile?.profile_image || currentProfile?.avatar || "/placeholder.svg"} />
+                    <AvatarFallback>{(formData.name || 'U').charAt(0)}</AvatarFallback>
                   </Avatar>
                   {isEditMode && (
                     <>
@@ -194,7 +184,7 @@ export default function ProfilePage() {
                   )}
                 </div>
                 <div className="mt-2">
-                  {isEditMode ? (
+                      {isEditMode ? (
                     <div className="space-y-2">
                       <Input
                         value={formData.name}
@@ -215,7 +205,7 @@ export default function ProfilePage() {
                         className="text-sm h-auto py-1 px-2"
                       />
                     </div>
-                  ) : (
+                      ) : (
                     <>
                       <h1 className="text-3xl font-bold text-foreground mt-2">{formData.name || 'John Doe'}</h1>
                       <p className="text-lg text-foreground/80 font-medium">{formData.title}</p>
@@ -409,7 +399,7 @@ export default function ProfilePage() {
               {isEditMode ? (
                 <div className="space-y-4">
                   {formData.education.map((edu: any, index: number) => (
-                    <div key={edu.id} className="space-y-3 p-4 border border-border rounded-lg relative">
+                    <div key={edu.id} className="space-y-3 p-4 pt-6 border border-border rounded-lg relative">
                       {formData.education.length > 1 && (
                         <Button
                           variant="ghost"
@@ -420,7 +410,7 @@ export default function ProfilePage() {
                               education: formData.education.filter((e: any) => e.id !== edu.id)
                             });
                           }}
-                          className="absolute top-2 right-2 h-7 w-7"
+                          className="absolute -top-3 right-2 h-7 w-7 text-muted-foreground hover:bg-destructive hover:text-white transition-colors rounded-full flex items-center justify-center"
                         >
                           <X className="h-4 w-4" />
                         </Button>
@@ -542,13 +532,13 @@ export default function ProfilePage() {
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex gap-3">
                     <Avatar className="h-11 w-11 ring-2 ring-border">
-                      <AvatarImage src={currentUser?.avatar || "https://github.com/shadcn.png"} />
+                      <AvatarImage src={currentProfile?.profile_image_url || "https://github.com/shadcn.png"} />
                       <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                        {currentUser?.name?.charAt(0)}
+                        {currentProfile?.full_name?.charAt(0)}
                       </AvatarFallback>
                     </Avatar>
                     <div>
-                      <p className="font-semibold text-foreground">{currentUser?.name}</p>
+                      <p className="font-semibold text-foreground">{currentProfile?.full_name}</p>
                       <p className="text-sm text-muted-foreground leading-tight">{formData.title}</p>
                       <p className="text-xs text-muted-foreground/70 mt-0.5">
                         {formatTimeAgo(post.created_at)}

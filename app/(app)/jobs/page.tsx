@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -27,64 +27,27 @@ import {
   X,
 } from 'lucide-react';
 
-const jobListings = [
-  {
-    id: 1,
-    title: 'Senior Frontend Engineer',
-    company: 'Vercel',
-    logo: 'V',
-    logoColor: 'from-slate-800 to-slate-900',
-    location: 'San Francisco, CA',
-    salary: '$180K - $240K',
-    type: 'Full-time',
-    level: 'Senior',
-    skills: ['React', 'TypeScript', 'Next.js'],
-    posted: '2 days ago',
-    applicants: 45,
-  },
-  {
-    id: 2,
-    title: 'Product Designer',
-    company: 'Stripe',
-    logo: 'S',
-    logoColor: 'from-indigo-500 to-purple-600',
-    location: 'Remote',
-    salary: '$160K - $220K',
-    type: 'Full-time',
-    level: 'Mid-level',
-    skills: ['Figma', 'UX Research', 'Prototyping'],
-    posted: '5 days ago',
-    applicants: 89,
-  },
-  {
-    id: 3,
-    title: 'Data Engineer',
-    company: 'Databricks',
-    logo: 'D',
-    logoColor: 'from-orange-500 to-red-500',
-    location: 'Mountain View, CA',
-    salary: '$170K - $250K',
-    type: 'Full-time',
-    level: 'Senior',
-    skills: ['Python', 'Spark', 'Scala'],
-    posted: '1 day ago',
-    applicants: 32,
-  },
-  {
-    id: 4,
-    title: 'Full Stack Developer',
-    company: 'Notion',
-    logo: 'N',
-    logoColor: 'from-gray-700 to-gray-900',
-    location: 'San Francisco, CA',
-    salary: '$140K - $200K',
-    type: 'Full-time',
-    level: 'Entry-level',
-    skills: ['JavaScript', 'React', 'Node.js'],
-    posted: '3 days ago',
-    applicants: 67,
-  },
-];
+import { apiFetch } from '@/lib/api';
+import DOMPurify from 'dompurify';
+
+type Job = {
+  id: number;
+  title: string;
+  company: string;
+  logo?: string;
+  logoColor?: string;
+  location?: string;
+  salary?: string;
+  type?: string;
+  level?: string;
+  skills?: string[];
+  posted?: string;
+  // optional backend fields
+  remote?: boolean;
+  posted_at?: string | null;
+  url?: string | null;
+  description?: string | null;
+};
 
 const filterTabs = ['All Jobs', 'Full-time', 'Remote', 'Contract', 'Part-time'];
 
@@ -101,6 +64,95 @@ export default function JobsPage() {
   const [dateFilter, setDateFilter] = useState('all');
   const [sortBy, setSortBy] = useState('relevant');
   const jobsPerPage = 10;
+  const apiPageSize = 150;
+
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  function timeAgo(iso?: string | null) {
+    if (!iso) return "Recently";
+    try {
+      const diff = Date.now() - new Date(iso).getTime();
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      if (days <= 0) return "Today";
+      if (days === 1) return "1 day ago";
+      if (days < 7) return `${days} days ago`;
+      return new Intl.DateTimeFormat("en", { month: "short", day: "numeric" }).format(new Date(iso));
+    } catch {
+      return "Recently";
+    }
+  }
+
+  const gradientPool = [
+    "from-slate-800 to-slate-900",
+    "from-indigo-500 to-purple-600",
+    "from-orange-500 to-red-500",
+    "from-gray-700 to-gray-900",
+    "from-emerald-500 to-teal-600",
+    "from-blue-500 to-cyan-600",
+  ];
+
+  function pickGradient(seed: string) {
+    let h = 0;
+    for (let i = 0; i < seed.length; i++) h = (h << 5) - h + seed.charCodeAt(i);
+    return gradientPool[Math.abs(h) % gradientPool.length];
+  }
+
+  function extractSalary(html?: string | null) {
+    if (!html) return undefined;
+    const match = html.match(/\$\s*[\d,]+(?:\s*[-–]\s*\$\s*[\d,]+)?/);
+    return match ? match[0].replace(/\s+/g, " ") : undefined;
+  }
+
+  function extractLevel(r: any) {
+    const source = (r.level || r.seniority || r.experience || r.title || r.description || '').toString().toLowerCase();
+    if (/\b(entry|junior|jr)\b/.test(source)) return 'entry';
+    if (/\b(mid|intermediate|associate)\b/.test(source)) return 'mid';
+    if (/\b(principal|principal|lead|head|director)\b/.test(source)) return 'lead';
+    if (/\b(senior|sr)\b/.test(source)) return 'senior';
+    // fallback: if the raw value already matches our keys
+    if (['entry', 'mid', 'senior', 'lead'].includes(source)) return source;
+    return '';
+  }
+
+  function mapRemoteJob(r: any): Job {
+    const title = r.title || r.job_title || r.external_title || "";
+    const company = r.company_name || r.company || r.companyName || "Unknown";
+    const location = r.location || r.city || r.office || (r.remote ? "Remote" : "");
+    const posted = timeAgo(r.posted_at || r.created_at || null);
+    const salary = extractSalary(r.description) || (r.salary_range || r.salary || undefined);
+    const logo = (company || "?").charAt(0).toUpperCase();
+    const logoColor = pickGradient(company || String(r.id || Math.random()));
+    const detectedLevel = extractLevel(r) || (r.level ? String(r.level).toLowerCase() : '');
+    return {
+      id: Number(r.id),
+      title,
+      company,
+      logo,
+      logoColor,
+      location,
+      salary,
+      type: r.employment_type || r.type || "Full-time",
+      level: detectedLevel || "",
+      skills: r.skills || [],
+      posted,
+      remote: !!r.remote,
+      posted_at: r.posted_at || null,
+      url: r.url || r.apply_url || null,
+      description: r.description || null,
+    };
+  }
+
+  function displayLevel(level?: string) {
+    if (!level) return '';
+    const labels: Record<string, string> = {
+      entry: 'Entry Level',
+      mid: 'Mid Level',
+      senior: 'Senior',
+      lead: 'Lead/Principal',
+    };
+    return labels[level] ?? level;
+  }
 
   const toggleSaveJob = (jobId: number) => {
     setSavedJobs(prev => {
@@ -113,6 +165,48 @@ export default function JobsPage() {
       return newSet;
     });
   };
+
+  const buildAndFetch = async (page = 1) => {
+    try {
+      setLoading(true);
+      const params = new URLSearchParams();
+      if (searchQuery) params.append('q', searchQuery);
+      if (locationFilter) params.append('location', locationFilter);
+      // include page size and page requested by the client
+      params.append('page_size', String(apiPageSize));
+      params.append('page', String(page));
+      params.append('sync', 'true');
+
+      const chunk = await apiFetch<any[]>(
+        `/jobs${params.toString() ? `?${params.toString()}` : ''}`
+      );
+
+      if (Array.isArray(chunk)) setJobs(chunk.map(mapRemoteJob));
+    } catch (err) {
+      // keep using local mock data on error
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const mountedRef = useRef(false);
+
+  // call once on mount, then debounce on subsequent changes
+  useEffect(() => {
+    if (!mountedRef.current) {
+      mountedRef.current = true;
+      void buildAndFetch(1);
+      setCurrentPage(1);
+      return;
+    }
+
+    const id = setTimeout(() => {
+      void buildAndFetch(1);
+      setCurrentPage(1);
+    }, 350);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery, locationFilter, sortBy, dateFilter]);
 
   const clearFilters = () => {
     setExperienceLevel('all');
@@ -255,7 +349,7 @@ export default function JobsPage() {
       <div className="grid lg:grid-cols-[380px_1fr] gap-4">
         {/* Jobs List */}
         <div className="space-y-2">
-          {jobListings
+          {jobs
             .slice((currentPage - 1) * jobsPerPage, currentPage * jobsPerPage)
             .map((job) => {
               const isSaved = savedJobs.has(job.id);
@@ -264,19 +358,19 @@ export default function JobsPage() {
                 <Card
                   key={job.id}
                   onClick={() => setSelectedJobId(job.id)}
-                  className={`p-3 border border-border shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer group ${
+                  className={`p-2 border border-border shadow-sm hover:shadow-md transition-all duration-150 cursor-pointer group ${
                     selectedJobId === job.id ? 'ring-2 ring-primary bg-primary/5' : ''
                   }`}
                 >
-                  <div className="flex items-start gap-2.5 mb-2">
-                    <div className={`h-9 w-9 rounded-lg bg-gradient-to-br ${job.logoColor} flex items-center justify-center text-white font-bold text-sm shadow-sm flex-shrink-0`}>
+                  <div className="flex items-start gap-2 mb-1">
+                    <div className={`h-8 w-8 rounded-lg bg-gradient-to-br ${job.logoColor} flex items-center justify-center text-white font-bold text-xs shadow-sm flex-shrink-0`}>
                       {job.logo}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-sm text-foreground group-hover:text-primary transition-colors line-clamp-1">
+                      <h3 className="font-semibold text-xs text-foreground group-hover:text-primary transition-colors line-clamp-1">
                         {job.title}
                       </h3>
-                      <p className="text-xs text-muted-foreground">{job.company}</p>
+                      <p className="text-[11px] text-muted-foreground">{job.company}</p>
                     </div>
                   </div>
 
@@ -301,17 +395,13 @@ export default function JobsPage() {
                       <Clock className="h-2.5 w-2.5" />
                       {job.posted}
                     </span>
-                    <span className="text-muted-foreground flex items-center gap-1">
-                      <TrendingUp className="h-2.5 w-2.5" />
-                      {job.applicants}
-                    </span>
                   </div>
               </Card>
             );
           })}
           
           {/* Pagination */}
-          {jobListings.length > jobsPerPage && (
+          {jobs.length > jobsPerPage && (
             <div className="flex items-center justify-center gap-2 pt-4">
               <Button
                 variant="outline"
@@ -323,23 +413,32 @@ export default function JobsPage() {
                 Previous
               </Button>
               <div className="flex gap-1">
-                {Array.from({ length: Math.ceil(jobListings.length / jobsPerPage) }, (_, i) => i + 1).map(page => (
-                  <Button
-                    key={page}
-                    variant={currentPage === page ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setCurrentPage(page)}
-                    className={currentPage !== page ? "bg-transparent" : ""}
-                  >
-                    {page}
-                  </Button>
-                ))}
+                {(() => {
+                  const totalPages = Math.ceil(jobs.length / jobsPerPage);
+                  const maxPages = 5;
+                  let start = Math.max(1, currentPage - Math.floor(maxPages / 2));
+                  let end = Math.min(totalPages, start + maxPages - 1);
+                  if (end - start < maxPages - 1) start = Math.max(1, end - maxPages + 1);
+                  const pages: number[] = [];
+                  for (let i = start; i <= end; i++) pages.push(i);
+                  return pages.map((page) => (
+                    <Button
+                      key={page}
+                      variant={currentPage === page ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setCurrentPage(page)}
+                      className={currentPage !== page ? 'bg-transparent' : ''}
+                    >
+                      {page}
+                    </Button>
+                  ));
+                })()}
               </div>
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setCurrentPage(p => Math.min(Math.ceil(jobListings.length / jobsPerPage), p + 1))}
-                disabled={currentPage === Math.ceil(jobListings.length / jobsPerPage)}
+                onClick={() => setCurrentPage(p => Math.min(Math.ceil(jobs.length / jobsPerPage), p + 1))}
+                disabled={currentPage === Math.ceil(jobs.length / jobsPerPage)}
                 className="bg-transparent"
               >
                 Next
@@ -353,7 +452,7 @@ export default function JobsPage() {
           {selectedJobId ? (
             <Card className="border-border/50 shadow-sm">
               {(() => {
-                const job = jobListings.find(j => j.id === selectedJobId);
+                const job = jobs.find(j => j.id === selectedJobId);
                 if (!job) return null;
                 
                 return (
@@ -406,10 +505,6 @@ export default function JobsPage() {
                           <Clock className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                           <span className="text-foreground">Posted {job.posted}</span>
                         </div>
-                        <div className="flex items-center gap-2 text-sm">
-                          <TrendingUp className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                          <span className="text-foreground">{job.applicants} applicants</span>
-                        </div>
                       </div>
 
                       {/* Tags */}
@@ -433,117 +528,20 @@ export default function JobsPage() {
                       {/* Job Description */}
                       <div className="space-y-3">
                         <h3 className="font-semibold text-foreground text-base">About the Role</h3>
-                        <p className="text-sm text-muted-foreground leading-relaxed">
-                          We're looking for a talented professional to join our rapidly growing team. In this role, you'll be at the forefront of building innovative solutions that impact millions of users worldwide. You'll collaborate with talented engineers, designers, and product managers to create exceptional products.
-                        </p>
-                        <p className="text-sm text-muted-foreground leading-relaxed">
-                          This is a unique opportunity to make a significant impact in a fast-paced, dynamic environment. You'll have the autonomy to drive projects from conception to completion while working with cutting-edge technologies and best practices.
-                        </p>
+                        {job.description ? (
+                          <div
+                            className="prose max-w-none text-sm text-muted-foreground leading-relaxed"
+                            dangerouslySetInnerHTML={{ __html: normalizeDescription(job.description) }}
+                          />
+                        ) : (
+                          <>
+                            <p className="text-sm text-muted-foreground leading-relaxed">
+                              Job description is not available for this position.
+                            </p>
+                          </>
+                        )}
                       </div>
 
-                      {/* Responsibilities */}
-                      <div className="space-y-3">
-                        <h3 className="font-semibold text-foreground text-base">Key Responsibilities</h3>
-                        <ul className="space-y-2 text-sm text-muted-foreground">
-                          <li className="flex gap-2">
-                            <span className="text-primary mt-1">•</span>
-                            <span>Design, develop, and maintain scalable applications and services</span>
-                          </li>
-                          <li className="flex gap-2">
-                            <span className="text-primary mt-1">•</span>
-                            <span>Collaborate with cross-functional teams to define and implement new features</span>
-                          </li>
-                          <li className="flex gap-2">
-                            <span className="text-primary mt-1">•</span>
-                            <span>Write clean, maintainable code following industry best practices</span>
-                          </li>
-                          <li className="flex gap-2">
-                            <span className="text-primary mt-1">•</span>
-                            <span>Participate in code reviews and mentor junior team members</span>
-                          </li>
-                          <li className="flex gap-2">
-                            <span className="text-primary mt-1">•</span>
-                            <span>Contribute to technical documentation and architectural decisions</span>
-                          </li>
-                          <li className="flex gap-2">
-                            <span className="text-primary mt-1">•</span>
-                            <span>Stay up-to-date with emerging technologies and industry trends</span>
-                          </li>
-                        </ul>
-                      </div>
-
-                      {/* Requirements */}
-                      <div className="space-y-3">
-                        <h3 className="font-semibold text-foreground text-base">Requirements</h3>
-                        <ul className="space-y-2 text-sm text-muted-foreground">
-                          <li className="flex gap-2">
-                            <span className="text-primary mt-1">•</span>
-                            <span>5+ years of professional experience in software development</span>
-                          </li>
-                          <li className="flex gap-2">
-                            <span className="text-primary mt-1">•</span>
-                            <span>Strong proficiency in {job.skills.join(', ')} and related technologies</span>
-                          </li>
-                          <li className="flex gap-2">
-                            <span className="text-primary mt-1">•</span>
-                            <span>Experience with modern development workflows and CI/CD pipelines</span>
-                          </li>
-                          <li className="flex gap-2">
-                            <span className="text-primary mt-1">•</span>
-                            <span>Excellent problem-solving skills and attention to detail</span>
-                          </li>
-                          <li className="flex gap-2">
-                            <span className="text-primary mt-1">•</span>
-                            <span>Strong communication and collaboration skills</span>
-                          </li>
-                          <li className="flex gap-2">
-                            <span className="text-primary mt-1">•</span>
-                            <span>Bachelor's degree in Computer Science or equivalent experience</span>
-                          </li>
-                        </ul>
-                      </div>
-
-                      {/* Benefits */}
-                      <div className="space-y-3">
-                        <h3 className="font-semibold text-foreground text-base">What We Offer</h3>
-                        <ul className="space-y-2 text-sm text-muted-foreground">
-                          <li className="flex gap-2">
-                            <span className="text-primary mt-1">•</span>
-                            <span>Competitive salary and equity compensation</span>
-                          </li>
-                          <li className="flex gap-2">
-                            <span className="text-primary mt-1">•</span>
-                            <span>Comprehensive health, dental, and vision insurance</span>
-                          </li>
-                          <li className="flex gap-2">
-                            <span className="text-primary mt-1">•</span>
-                            <span>Flexible work arrangements and unlimited PTO</span>
-                          </li>
-                          <li className="flex gap-2">
-                            <span className="text-primary mt-1">•</span>
-                            <span>Professional development budget and learning opportunities</span>
-                          </li>
-                          <li className="flex gap-2">
-                            <span className="text-primary mt-1">•</span>
-                            <span>Modern office space with state-of-the-art equipment</span>
-                          </li>
-                          <li className="flex gap-2">
-                            <span className="text-primary mt-1">•</span>
-                            <span>Regular team events and company offsites</span>
-                          </li>
-                        </ul>
-                      </div>
-
-                      {/* Company Info */}
-                      <div className="space-y-3 pb-4">
-                        <h3 className="font-semibold text-foreground text-base">About {job.company}</h3>
-                        <p className="text-sm text-muted-foreground leading-relaxed">
-                          {job.company} is a leading technology company committed to building products that empower people and businesses worldwide. We believe in creating an inclusive workplace where diverse perspectives drive innovation and creativity.
-                        </p>
-                        <p className="text-sm text-muted-foreground leading-relaxed">
-                          Join us in our mission to transform the industry and make a lasting impact on the world. We're excited to hear from you!
-                        </p>
-                      </div>
                     </div>
                   </>
                 );
@@ -565,4 +563,21 @@ export default function JobsPage() {
       </div>
     </div>
   );
+}
+
+function normalizeDescription(html?: string | null) {
+  if (!html) return "";
+  // first sanitize to remove unsafe content
+  const sanitized = DOMPurify.sanitize(html);
+  const doc = new DOMParser().parseFromString(sanitized, 'text/html');
+  const headings = doc.querySelectorAll('h1,h2,h3,h4,h5,h6');
+  headings.forEach((h) => {
+    const wrapper = doc.createElement('h3');
+    wrapper.innerHTML = h.innerHTML;
+    // consistent heading style used across the app
+    wrapper.className = 'font-semibold text-foreground text-base';
+    h.replaceWith(wrapper);
+  });
+  // re-sanitize after transformations
+  return DOMPurify.sanitize(doc.body.innerHTML);
 }

@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ChevronLeft, ChevronRight, Briefcase, MapPin, Clock, Users2, Pin } from 'lucide-react';
 import { MOCK_JOBS, MOCK_USERS } from '@/lib/mock-data';
 import { getCurrentUser } from '@/lib/auth';
+import { getHomePageData } from '@/app/(app)/feed/getHomePageData';
 
 export function FeedSidebar() {
   const currentUser = getCurrentUser();
@@ -15,8 +16,9 @@ export function FeedSidebar() {
   // Carousel state for jobs
   const [currentJobIndex, setCurrentJobIndex] = useState(0);
   const jobsPerPage = 3;
-  const totalJobs = MOCK_JOBS.length;
-  const latestJobs = MOCK_JOBS.slice(currentJobIndex, currentJobIndex + jobsPerPage);
+  const [jobs, setJobs] = useState<any[]>(MOCK_JOBS);
+  const totalJobs = jobs.length;
+  const latestJobs = jobs.slice(currentJobIndex, currentJobIndex + jobsPerPage);
   
   // Get suggested people (exclude current user)
   const [suggestedPeople, setSuggestedPeople] = useState(
@@ -34,7 +36,52 @@ export function FeedSidebar() {
   }, [totalJobs]);
   
   // Get current jobs to display
-  const currentJobs = MOCK_JOBS.slice(currentJobIndex, currentJobIndex + jobsPerPage);
+  const currentJobs = jobs.slice(currentJobIndex, currentJobIndex + jobsPerPage);
+
+  // Fetch latest jobs and suggestions from RPC
+  useEffect(() => {
+    let mounted = true;
+
+    const load = async () => {
+      try {
+        const data = await getHomePageData();
+        if (!mounted) return;
+
+        if (data?.latest_jobs && Array.isArray(data.latest_jobs) && data.latest_jobs.length > 0) {
+          // Map RPC job shape to what the UI expects
+          const mapped = data.latest_jobs.map((j: any) => ({
+            id: j.id?.toString() || String(Math.random()),
+            title: j.title || j.job_title || 'Job',
+            company: j.company_name || j.company || 'Company',
+            location: j.location || 'Remote',
+            posted_at: j.posted_at || new Date().toISOString(),
+            url: j.url,
+          }));
+          setJobs(mapped);
+        }
+
+        if (data?.suggestions && Array.isArray(data.suggestions) && data.suggestions.length > 0) {
+          const people = data.suggestions
+            .map((s: any) => ({
+              id: (s.id != null) ? s.id.toString() : String(Math.random()),
+              name: s.name || s.full_name || '',
+              avatar: s.avatar || s.avatar_url || '/placeholder.svg',
+              title: s.headline || s.title || '',
+            }))
+            .filter((p: any) => p.id !== currentUser?.id)
+            .slice(0, 3);
+
+          if (people.length > 0) setSuggestedPeople(people as any);
+        }
+      } catch (err) {
+        console.warn('[v0] FeedSidebar: could not load latest jobs/suggestions', err);
+      }
+    };
+
+    load();
+
+    return () => { mounted = false; };
+  }, [currentUser?.id]);
   
   // Carousel navigation
   const goToPrevious = () => {

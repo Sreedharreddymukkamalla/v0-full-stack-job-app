@@ -13,114 +13,13 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { getUserNetwork } from '@/lib/supabase';
-
-const suggestedUsers = [
-  {
-    id: 1,
-    name: 'Susmitha Kokkalgave',
-    title: 'Data Engineering',
-    company: 'Google',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Susmitha',
-    banner: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=200&fit=crop',
-    skills: ['Python', 'SQL', 'Spark'],
-    type: 'suggested',
-  },
-  {
-    id: 2,
-    name: 'Alex Rodriguez',
-    title: 'UX Designer',
-    company: 'Stripe',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Alex',
-    banner: 'https://images.unsplash.com/photo-1511593358241-7eea1f3c84e5?w=400&h=200&fit=crop',
-    skills: ['Figma', 'Research', 'Design Systems'],
-    type: 'suggested',
-  },
-  {
-    id: 3,
-    name: 'Jordan Tech',
-    title: 'Senior Developer',
-    company: 'Google',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Jordan',
-    banner: 'https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=400&h=200&fit=crop',
-    skills: ['Golang', 'Microservices', 'Cloud'],
-    type: 'suggested',
-  },
-  {
-    id: 4,
-    name: 'Maria Garcia',
-    title: 'Frontend Engineer',
-    company: 'Meta',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Maria',
-    banner: 'https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=400&h=200&fit=crop',
-    skills: ['React', 'TypeScript', 'Next.js'],
-    type: 'suggested',
-  },
-];
-
-const invitations = [
-  {
-    id: 101,
-    name: 'Emma Wilson',
-    title: 'Product Manager',
-    company: 'Notion',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Emma',
-    banner: 'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=400&h=200&fit=crop',
-    skills: ['Product', 'Strategy', 'Leadership'],
-    type: 'invitation',
-  },
-  {
-    id: 102,
-    name: 'James Miller',
-    title: 'Backend Engineer',
-    company: 'Amazon',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=James',
-    banner: 'https://images.unsplash.com/photo-1426604966848-d7adac402bff?w=400&h=200&fit=crop',
-    skills: ['Java', 'AWS', 'Microservices'],
-    type: 'invitation',
-  },
-];
-
-const connections = [
-  {
-    id: 201,
-    name: 'Sarah Chen',
-    title: 'Product Manager',
-    company: 'Vercel',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah',
-    banner: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=400&h=200&fit=crop',
-    skills: ['Product Strategy', 'Leadership', 'Agile'],
-    type: 'connected',
-  },
-  {
-    id: 202,
-    name: 'David Kim',
-    title: 'DevOps Engineer',
-    company: 'Amazon',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=David',
-    banner: 'https://images.unsplash.com/photo-1447752875215-b2761acb3c5d?w=400&h=200&fit=crop',
-    skills: ['Kubernetes', 'CI/CD', 'AWS'],
-    type: 'connected',
-  },
-];
-
-const sentRequests = [
-  {
-    id: 301,
-    name: 'Lisa Anderson',
-    title: 'Engineering Manager',
-    company: 'Meta',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Lisa',
-    banner: 'https://images.unsplash.com/photo-1465056836041-7f43ac27dcb5?w=400&h=200&fit=crop',
-    skills: ['Leadership', 'Team Building', 'Architecture'],
-    type: 'pending',
-  },
-];
+import { getProfile } from '@/lib/profileStore';
 
 export default function UsersPage() {
-  const [suggested, setSuggested] = useState(suggestedUsers);
-  const [invites, setInvites] = useState(invitations);
-  const [myConnections, setMyConnections] = useState(connections);
-  const [pending, setPending] = useState(sentRequests);
+  const [suggested, setSuggested] = useState([]);
+  const [invites, setInvites] = useState([]);
+  const [myConnections, setMyConnections] = useState([]);
+  const [pending, setPending] = useState([]);
   const [invitationsOpen, setInvitationsOpen] = useState(true);
   const [loading, setLoading] = useState(true);
 
@@ -128,15 +27,15 @@ export default function UsersPage() {
   useEffect(() => {
     const fetchNetworkData = async () => {
       try {
-        const currentUser = typeof window !== 'undefined' ? localStorage.getItem('currentUser') : null;
-        if (!currentUser) {
-          console.log('[v0] No current user, using mock network data');
+        // Use in-memory profile store instead of localStorage
+        const profile = getProfile();
+        if (!profile) {
+          console.log('[v0] No profile available in store, using mock network data');
           setLoading(false);
           return;
         }
 
-        const user = JSON.parse(currentUser);
-        const userId = user.id;
+        const userId = profile.user_id ?? profile.id ?? profile.user?.id;
 
         console.log('[v0] Fetching network data for user:', userId);
         const data = await getUserNetwork(userId);
@@ -144,14 +43,50 @@ export default function UsersPage() {
 
         // Transform RPC data to match component structure
         if (data) {
+          // Connections
           if (data.connections && Array.isArray(data.connections)) {
-            setMyConnections(data.connections);
+            const mappedConnections = data.connections.map((c: any) => ({
+              id: c.id,
+              name: c.name || c.other_name || c.full_name || '',
+              title: c.title || c.headline || c.other_headline || '',
+              company: c.company || c.company_name || '',
+              avatar: c.avatar || c.other_avatar || c.author_avatar || '/placeholder.svg',
+              banner: c.cover_image_url || c.banner || '',
+              skills: c.skills || [],
+              type: 'connected',
+            }));
+            setMyConnections(mappedConnections);
           }
+
+          // Incoming requests / invitations
           if (data.requests && Array.isArray(data.requests)) {
-            setInvites(data.requests);
+            const mappedRequests = data.requests.map((r: any) => ({
+              id: r.id,
+              name: r.other_name || r.name || '',
+              title: r.other_headline || r.other_title || '',
+              company: r.company || '',
+              avatar: r.other_avatar || r.avatar || '/placeholder.svg',
+              banner: r.cover_image_url || r.banner || '',
+              skills: [],
+              type: 'invitation',
+              created_at: r.created_at,
+            }));
+            setInvites(mappedRequests);
           }
+
+          // Suggestions
           if (data.suggestions && Array.isArray(data.suggestions)) {
-            setSuggested(data.suggestions);
+            const mappedSuggestions = data.suggestions.map((s: any) => ({
+              id: s.id,
+              name: s.name || s.other_name || '',
+              title: s.headline || s.other_headline || '',
+              company: s.company || '',
+              avatar: s.avatar || s.avatar_url || '/placeholder.svg',
+              banner: s.cover_image_url || s.banner || '',
+              skills: [],
+              type: 'suggested',
+            }));
+            setSuggested(mappedSuggestions);
           }
         }
       } catch (error) {

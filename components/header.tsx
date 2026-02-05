@@ -1,5 +1,6 @@
-'use client';
+ 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Search as SearchIcon, Bell, Plus, Menu, User, Settings, LogOut, MessageSquare, UserPlus, Briefcase } from 'lucide-react';
@@ -16,7 +17,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { getCurrentUser, signOut } from '@/lib/auth';
+import { signOut } from '@/lib/auth';
+import { getProfile, loadProfileFromApi, clearProfile } from '@/lib/profileStore';
 import { ThemeToggle } from '@/components/theme-toggle';
 
 const recentNotifications = [
@@ -77,12 +79,22 @@ const recentMessages = [
 ];
 
 export function Header() {
-  const currentUser = getCurrentUser();
+  const [currentUser, setCurrentUser] = useState<any>(() => getProfile());
   const router = useRouter();
   const unreadNotifCount = recentNotifications.filter(n => !n.read).length;
   const unreadMsgCount = recentMessages.filter(m => !m.read).length;
 
+  useEffect(() => {
+    if (!currentUser) {
+      loadProfileFromApi().then((p) => {
+        if (p) setCurrentUser(p);
+      }).catch(() => null);
+    }
+  }, []);
+
   const handleSignOut = () => {
+    // clear in-memory profile and auth tokens
+    try { clearProfile(); } catch (e) {}
     signOut();
     router.push('/signin');
   };
@@ -224,9 +236,9 @@ export function Header() {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="h-9 w-9 rounded-full p-0">
                 <Avatar className="h-9 w-9 ring-2 ring-border hover:ring-primary/50 transition-all cursor-pointer">
-                  <AvatarImage src={currentUser?.avatar || "/placeholder.svg"} />
+                  <AvatarImage src={currentUser?.avatar_url || currentUser?.avatar || currentUser?.other_avatar || "/placeholder.svg"} />
                   <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
-                    {currentUser?.name?.charAt(0) || 'U'}
+                    {(currentUser?.full_name || currentUser?.name || currentUser?.user?.full_name || 'U')?.charAt(0) || 'U'}
                   </AvatarFallback>
                 </Avatar>
               </Button>
@@ -234,8 +246,8 @@ export function Header() {
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel>
                 <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium">{currentUser?.name || 'Guest User'}</p>
-                  <p className="text-xs text-muted-foreground">{currentUser?.email || 'No email'}</p>
+                  <p className="text-sm font-medium">{currentUser?.full_name || currentUser?.name || currentUser?.user?.full_name || 'Guest User'}</p>
+                  <p className="text-xs text-muted-foreground">{currentUser?.email || currentUser?.user?.email || 'No email'}</p>
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />

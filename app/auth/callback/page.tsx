@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { apiFetch } from '@/lib/api';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { AlertCircle } from 'lucide-react';
@@ -32,17 +33,28 @@ export default function GoogleAuthCallback() {
         }
 
         console.log('[v0] Google auth successful, user:', data.session.user.email);
-        
-        // Store user info in localStorage for app access
-        localStorage.setItem('currentUser', JSON.stringify({
-          id: data.session.user.id,
-          email: data.session.user.email,
-          name: data.session.user.user_metadata?.full_name || 'User',
-          avatar: data.session.user.user_metadata?.avatar_url,
-        }));
 
-        // Redirect to feed
-        router.push('/feed');
+        // Exchange Supabase token for backend JWT
+        const res = await apiFetch<{
+          access_token: string;
+          refresh_token: string;
+          profile: any;
+        }>('/auth/oauth/supabase', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${data.session.access_token}`,
+          },
+          skipAuth: true,
+        });
+
+        localStorage.setItem('accessToken', res.access_token);
+        localStorage.setItem('refreshToken', res.refresh_token);
+
+        // Fetch profile and redirect to onboarding if incomplete
+        const profile = await apiFetch<any>('/profiles/me');
+        const needsProfile = !profile?.full_name || !profile?.headline || !profile?.location;
+
+        router.push(needsProfile ? '/onboarding/profile' : '/feed');
       } catch (err: any) {
         console.error('[v0] Google auth callback error:', err);
         setError(err?.message || 'Authentication failed');

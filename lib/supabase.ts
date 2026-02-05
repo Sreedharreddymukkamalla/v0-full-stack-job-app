@@ -105,7 +105,7 @@ export async function getUserConversations(userId: number) {
   const client = getSupabaseClient();
   
   try {
-    const { data, error } = await client.rpc('get_user_conversations', {
+    const { data, error } = await client.rpc('messaging_bootstrap_rpc', {
       current_user_id: userId,
     });
 
@@ -120,44 +120,6 @@ export async function getUserConversations(userId: number) {
   }
 }
 
-export async function getHomePageData(userId?: number) {
-  if (!isSupabaseConfigured()) {
-    throw new Error('Supabase is not configured.');
-  }
-
-  let finalUserId = userId;
-
-  // If userId not provided, fetch it from the API
-  if (!finalUserId) {
-    try {
-      const { apiFetch } = await import('./api');
-      const profile = await apiFetch<any>('/profiles/me');
-      finalUserId = profile?.user_id;
-      console.log('[v0] Fetched userId from API:', finalUserId);
-    } catch (error) {
-      console.warn('[v0] Could not fetch user profile:', error);
-      // Continue without userId
-    }
-  }
-
-  const client = getSupabaseClient();
-  
-  try {
-    const { data, error } = await client.rpc('get_home_page_data', {
-      current_user_id: finalUserId || null,
-    });
-
-    if (error) {
-      throw new Error(error.message);
-    }
-
-    return data || { feed: [], latest_jobs: [], suggestions: [] };
-  } catch (err) {
-    console.error('[v0] Error fetching home page data:', err);
-    throw err;
-  }
-}
-
 export async function getUserNetwork(userId: number) {
   if (!isSupabaseConfigured()) {
     throw new Error('Supabase is not configured.');
@@ -166,7 +128,7 @@ export async function getUserNetwork(userId: number) {
   const client = getSupabaseClient();
   
   try {
-    const { data, error } = await client.rpc('get_user_network', {
+    const { data, error } = await client.rpc('network_bootstrap_rpc', {
       current_user_id: userId,
     });
 
