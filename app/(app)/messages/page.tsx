@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from "react"
+import { useEffect, useRef } from "react"
 import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -41,6 +41,9 @@ export default function MessagesPage() {
   const [blockedUsers, setBlockedUsers] = useState<Set<number>>(new Set());
   const [selectedConversation, setSelectedConversation] = useState<number>(1);
   const [loading, setLoading] = useState(true);
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  // track pending sends by content to avoid duplicate identical sends
+  const pendingContentRef = useRef<Set<string>>(new Set());
 
   // Fetch conversations from RPC on component mount
   useEffect(() => {
@@ -131,6 +134,15 @@ export default function MessagesPage() {
     void load();
   }, [selectedConversation]);
 
+  // Auto-scroll to bottom when messages change or a conversation opens
+  useEffect(() => {
+    try {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    } catch (e) {
+      // ignore
+    }
+  }, [messagesForChat, selectedConversation]);
+
   // Fetch connections for search
   useEffect(() => {
     const fetchConnections = async () => {
@@ -183,6 +195,10 @@ export default function MessagesPage() {
         return [entry, ...without];
       });
       setSelectedConversation(convoId);
+      // mark as read when opening
+      try {
+        markConversationRead(convoId);
+      } catch {}
     } catch (err) {
       console.error('[v0] Failed to open/create conversation', err);
     }
@@ -193,10 +209,29 @@ export default function MessagesPage() {
     : conversationList;
 
   const handleSendMessage = () => {
-    if (!messageInput.trim() || !selectedConversation) return;
+    const content = messageInput.trim();
+    if (!content || !selectedConversation) return;
+    // prevent duplicate identical sends while one is pending
+    if (pendingContentRef.current.has(content)) return;
+
+    const tempId = `temp-${Date.now()}`;
+    const optimistic = {
+      id: tempId,
+      sender: 'You',
+      content,
+      timestamp: new Date().toLocaleString(),
+      isUser: true,
+      pending: true,
+    };
+
+    // mark as pending and render immediately
+    pendingContentRef.current.add(content);
+    setMessagesForChat((prev) => [...prev, optimistic]);
+    setMessageInput('');
+
     const send = async () => {
       try {
-        const payload = { content: messageInput };
+        const payload = { content };
         const msg = await apiFetch<any>(`/messages/conversations/${selectedConversation}/messages`, {
           method: 'POST',
           json: payload,
@@ -205,13 +240,17 @@ export default function MessagesPage() {
           id: msg.id,
           sender: msg.sender_name || msg.sender || 'You',
           content: msg.content,
-          timestamp: msg.created_at ? new Date(msg.created_at).toLocaleString() : '',
+          timestamp: msg.created_at ? new Date(msg.created_at).toLocaleString() : new Date().toLocaleString(),
           isUser: true,
         };
-        setMessagesForChat((prev) => [...prev, mapped]);
-        setMessageInput('');
+        // replace optimistic message with server message
+        setMessagesForChat((prev) => prev.map((m) => (m.id === tempId ? mapped : m)));
       } catch (err) {
         console.error('[v0] Failed to send message', err);
+        // mark optimistic message as failed (remove pending flag)
+        setMessagesForChat((prev) => prev.map((m) => (m.id === tempId ? { ...m, pending: false, failed: true } : m)));
+      } finally {
+        pendingContentRef.current.delete(content);
       }
     };
     void send();
@@ -336,52 +375,56 @@ export default function MessagesPage() {
         </div>
 
         <div className="flex-1 overflow-y-auto">
-          {listToRender.map((conv) => (
-            <button
-              key={conv.id}
-              onClick={() => {
-                if ((searchQuery || '').trim()) {
-                  void openOrCreateConversation(conv);
-                } else {
-                  setSelectedConversation(conv.id);
-                }
-              }}
-              className={`w-full p-4 text-left transition-all duration-200 border-b border-border/50 ${
-                selectedConversation === conv.id
-                  ? 'bg-primary/5 border-l-2 border-l-primary'
-                  : 'hover:bg-secondary/50'
-              }`}
-            >
-              <div className="flex items-start gap-3">
-                <div className="relative">
-                  <Avatar className="h-12 w-12 ring-2 ring-border">
-                    <AvatarImage src={conv.avatar || "/placeholder.svg"} />
-                    <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                      {conv.name.split(' ').map(n => n[0]).join('')}
-                    </AvatarFallback>
-                  </Avatar>
-                  {conv.online && (
-                    <div className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full bg-green-500 ring-2 ring-card" />
+          {listToRender.map((conv) => {
+            const hasUnread = Number(conv.unread) > 0;
+            return (
+              <button
+                key={conv.id}
+                onClick={() => {
+                  if ((searchQuery || '').trim()) {
+                    void openOrCreateConversation(conv);
+                  } else {
+                    setSelectedConversation(conv.id);
+                    if (hasUnread) markConversationRead(conv.id);
+                  }
+                }}
+                className={`w-full p-4 text-left transition-all duration-200 border-b border-border/50 ${
+                  selectedConversation === conv.id
+                    ? 'bg-primary/5 border-l-2 border-l-primary'
+                    : 'hover:bg-secondary/50'
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <div className="relative">
+                    <Avatar className="h-12 w-12 ring-2 ring-border">
+                      <AvatarImage src={conv.avatar || "/placeholder.svg"} />
+                      <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                        {String(conv.name || '').split(' ').map((n: string) => n[0]).join('')}
+                      </AvatarFallback>
+                    </Avatar>
+                    {conv.online && (
+                      <div className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full bg-green-500 ring-2 ring-card" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-1">
+                      <h3 className={`font-semibold text-foreground truncate ${hasUnread ? 'text-primary' : ''}`}>
+                        {conv.name}
+                      </h3>
+                      <span className="text-xs text-muted-foreground flex-shrink-0 ml-2">{conv.timestamp}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground truncate mb-1">{conv.role}</p>
+                    <p className={`text-sm truncate ${hasUnread ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
+                      {conv.lastMessage}
+                    </p>
+                  </div>
+                  {hasUnread && (
+                    <Circle className="h-2.5 w-2.5 fill-primary text-primary flex-shrink-0 mt-1" />
                   )}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-1">
-                    <h3 className={`font-semibold text-foreground truncate ${conv.unread ? 'text-primary' : ''}`}>
-                      {conv.name}
-                    </h3>
-                    <span className="text-xs text-muted-foreground flex-shrink-0 ml-2">{conv.timestamp}</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground truncate mb-1">{conv.role}</p>
-                  <p className={`text-sm truncate ${conv.unread ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
-                    {conv.lastMessage}
-                  </p>
-                </div>
-                {conv.unread && (
-                  <Circle className="h-2.5 w-2.5 fill-primary text-primary flex-shrink-0 mt-1" />
-                )}
-              </div>
-            </button>
-          ))}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -477,6 +520,7 @@ export default function MessagesPage() {
                   </div>
                 </div>
               ))}
+              <div ref={messagesEndRef} />
             </div>
 
             {/* Message Input */}
