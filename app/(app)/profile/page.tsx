@@ -561,8 +561,6 @@ export default function ProfilePage() {
                 </div>
               )}
             </div>
-
-            {/* Edit Button - Bottom Right */}
             {isSelfProfile && !isEditMode && (
               <div className="flex justify-end pt-4 border-t border-border/50">
                 <Button 
