@@ -116,7 +116,7 @@ export function AppSidebar() {
               <SidebarMenuButton
                 asChild
                 isActive={isActive(item.href)}
-                className="h-12 rounded-lg transition-colors hover:bg-sidebar-accent data-[active=true]:bg-accent data-[active=true]:text-accent-foreground"
+                className="h-[46px] rounded-lg transition-colors hover:bg-sidebar-accent data-[active=true]:bg-accent data-[active=true]:text-accent-foreground"
                 tooltip={!open ? item.label : undefined}
               >
                 <Link href={item.href} className={`flex items-center ${open ? 'gap-4 px-4' : 'justify-center px-0'}`}>
@@ -134,7 +134,7 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <SidebarMenuButton
               onClick={() => setIsReportDialogOpen(true)}
-              className="h-12 rounded-lg transition-colors hover:bg-sidebar-accent"
+              className="h-[46px] rounded-lg transition-colors hover:bg-sidebar-accent"
               tooltip={!open ? "Report Issue" : undefined}
             >
               <div className={`flex items-center ${open ? 'gap-4 px-4' : 'justify-center px-0'}`}>
