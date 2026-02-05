@@ -22,7 +22,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ReportPostDialog } from "@/components/report-post-dialog";
 import { getHomePageData } from "@/app/(app)/feed/getHomePageData";
 import { getProfile } from "@/lib/profileStore";
 
@@ -55,7 +54,6 @@ export default function PostDetailPage() {
   const [commentText, setCommentText] = useState("");
   const [showComments, setShowComments] = useState(false);
   const currentUser = getProfile();
-  const [reportDialogOpen, setReportDialogOpen] = useState(false);
 
   useEffect(() => {
     const fetchPost = async () => {
@@ -260,10 +258,7 @@ export default function PostDetailPage() {
                 Copy link to post
               </DropdownMenuItem>
               <DropdownMenuItem>Save post</DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => setReportDialogOpen(true)}
-                className="text-destructive focus:text-destructive cursor-pointer"
-              >
+              <DropdownMenuItem className="text-destructive focus:text-destructive cursor-pointer">
                 Report post
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -373,18 +368,6 @@ export default function PostDetailPage() {
           </div>
         )}
       </Card>
-
-      {/* Report Post Dialog */}
-      <ReportPostDialog
-        open={reportDialogOpen}
-        onOpenChange={setReportDialogOpen}
-        postId={postId}
-        onSubmit={async (reason, details) => {
-          console.log("[v0] Report submitted:", { postId, reason, details });
-          // Here you would typically send this to your backend API
-          // await submitReport(postId, reason, details);
-        }}
-      />
     </div>
   );
 }

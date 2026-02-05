@@ -34,7 +34,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ReportPostDialog } from "@/components/report-post-dialog";
 import { getCurrentUser } from "@/lib/auth";
 import { FeedSidebar } from "@/components/feed-sidebar";
 import { getHomePageData } from "../feed/getHomePageData";
@@ -68,8 +67,6 @@ export default function FeedPage() {
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [shareContent, setShareContent] = useState("");
   const [sharingPost, setSharingPost] = useState<Post | null>(null);
-  const [reportDialogOpen, setReportDialogOpen] = useState(false);
-  const [reportingPostId, setReportingPostId] = useState<string | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
   const [uploadedMedia, setUploadedMedia] = useState<{
@@ -425,13 +422,7 @@ export default function FeedPage() {
                             </DropdownMenuItem>
                           )}
                           {post.author_id !== currentUser?.id && (
-                            <DropdownMenuItem
-                              onClick={() => {
-                                setReportingPostId(post.id);
-                                setReportDialogOpen(true);
-                              }}
-                              className="cursor-pointer text-destructive focus:text-destructive"
-                            >
+                            <DropdownMenuItem className="cursor-pointer text-destructive focus:text-destructive">
                               Report post
                             </DropdownMenuItem>
                           )}
@@ -707,18 +698,6 @@ export default function FeedPage() {
           </div>
         </DialogContent>
       </Dialog>
-
-      {/* Report Post Dialog */}
-      <ReportPostDialog
-        open={reportDialogOpen}
-        onOpenChange={setReportDialogOpen}
-        postId={reportingPostId || ""}
-        onSubmit={async (reason, details) => {
-          console.log("[v0] Report submitted:", { postId: reportingPostId, reason, details });
-          // Here you would typically send this to your backend API
-          // await submitReport(reportingPostId, reason, details);
-        }}
-      />
     </div>
   );
 }
