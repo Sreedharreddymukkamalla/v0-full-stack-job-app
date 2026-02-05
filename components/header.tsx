@@ -1,4 +1,4 @@
- 'use client';
+'use client';
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -104,81 +104,81 @@ export function Header() {
     return () => {
       try {
         chan?.unsubscribe();
-      } catch (e) {}
+      } catch (e) { }
     };
   }, []);
 
-    // load recent conversations/messages and subscribe to realtime updates
-    useEffect(() => {
-      let channel: any;
-      const loadRecent = async () => {
-        try {
-          const profile = getProfile();
-          if (!profile) return;
-          const userId = profile.user_id ?? profile.id ?? profile.user?.id;
-          const data = await getUserConversations(userId);
-          if (Array.isArray(data)) {
-            const mapped = data.slice(0, 10).map((c: any) => ({
-              id: c.id,
-              user: c.name || c.other_name || `Conversation ${c.id}`,
-              avatar: c.avatar || c.user?.avatar || '/placeholder.svg',
-              message: c.last_message ?? c.lastMessage ?? c.preview ?? '',
-              time: c.timestamp ?? c.last_message_at ?? '',
-              read: !Boolean(c.unread || c.unread_count || c.unreadMessages),
-            }));
-            setRecentMsgsState(mapped);
-          }
-        } catch (e) {
-          // ignore
-        }
-      };
-
-      loadRecent();
-
+  // load recent conversations/messages and subscribe to realtime updates
+  useEffect(() => {
+    let channel: any;
+    const loadRecent = async () => {
       try {
-        const client = getSupabaseClient();
-        channel = client
-          .channel('header-realtime')
-          .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload: any) => {
-            const newRow = payload.new;
-            const convId = Number(newRow?.conversation_id);
-            if (!convId) return;
-            setRecentMsgsState((prev) => {
-              const idx = prev.findIndex((p) => Number(p.id) === convId);
-              const updatedItem = {
-                id: convId,
-                user: newRow.sender_id || `Conversation ${convId}`,
-                avatar: prev[idx]?.avatar || '/placeholder.svg',
-                message: newRow.content,
-                time: newRow.created_at ? new Date(newRow.created_at).toLocaleString() : '',
-                read: false,
-              };
-              if (idx >= 0) {
-                const copy = [...prev];
-                copy[idx] = updatedItem;
-                // move to front
-                copy.unshift(copy.splice(idx, 1)[0]);
-                return copy;
-              }
-              // prepend new conversation entry
-              return [updatedItem, ...prev].slice(0, 10);
-            });
-          })
-          .subscribe();
+        const profile = getProfile();
+        if (!profile) return;
+        const userId = profile.user_id ?? profile.id ?? profile.user?.id;
+        const data = await getUserConversations(userId);
+        if (Array.isArray(data)) {
+          const mapped = data.slice(0, 10).map((c: any) => ({
+            id: c.id,
+            user: c.name || c.other_name || `Conversation ${c.id}`,
+            avatar: c.avatar || c.user?.avatar || '/placeholder.svg',
+            message: c.last_message ?? c.lastMessage ?? c.preview ?? '',
+            time: c.timestamp ?? c.last_message_at ?? '',
+            read: !Boolean(c.unread || c.unread_count || c.unreadMessages),
+          }));
+          setRecentMsgsState(mapped);
+        }
       } catch (e) {
-        // ignore realtime if not configured
+        // ignore
       }
+    };
 
-      return () => {
-        try {
-          channel?.unsubscribe();
-        } catch (e) {}
-      };
-    }, []);
+    loadRecent();
+
+    try {
+      const client = getSupabaseClient();
+      channel = client
+        .channel('header-realtime')
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload: any) => {
+          const newRow = payload.new;
+          const convId = Number(newRow?.conversation_id);
+          if (!convId) return;
+          setRecentMsgsState((prev) => {
+            const idx = prev.findIndex((p) => Number(p.id) === convId);
+            const updatedItem = {
+              id: convId,
+              user: newRow.sender_id || `Conversation ${convId}`,
+              avatar: prev[idx]?.avatar || '/placeholder.svg',
+              message: newRow.content,
+              time: newRow.created_at ? new Date(newRow.created_at).toLocaleString() : '',
+              read: false,
+            };
+            if (idx >= 0) {
+              const copy = [...prev];
+              copy[idx] = updatedItem;
+              // move to front
+              copy.unshift(copy.splice(idx, 1)[0]);
+              return copy;
+            }
+            // prepend new conversation entry
+            return [updatedItem, ...prev].slice(0, 10);
+          });
+        })
+        .subscribe();
+    } catch (e) {
+      // ignore realtime if not configured
+    }
+
+    return () => {
+      try {
+        channel?.unsubscribe();
+      } catch (e) { }
+    };
+  }, []);
 
   const handleSignOut = () => {
     // clear in-memory profile and auth tokens
-    try { clearProfile(); } catch (e) {}
+    try { clearProfile(); } catch (e) { }
     signOut();
     router.push('/signin');
   };
@@ -190,7 +190,7 @@ export function Header() {
           <SidebarTrigger className="md:hidden h-9 w-9">
             <Menu className="h-5 w-5" />
           </SidebarTrigger>
-          
+
           <div className="flex-1 max-w-lg hidden md:block">
             <div className="relative">
               <SearchIcon className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -201,7 +201,7 @@ export function Header() {
             </div>
           </div>
         </div>
-        
+
         <div className="flex items-center gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -227,32 +227,31 @@ export function Header() {
                   <div className="p-4 text-sm text-muted-foreground">No unread messages</div>
                 ) : (
                   unreadMsgs.map((msg) => (
-                  <DropdownMenuItem
-                    key={msg.id}
-                    className={`flex items-start gap-3 p-3 cursor-pointer ${
-                      !msg.read ? 'bg-primary/5' : ''
-                    }`}
-                    onClick={() => {
-                      try {
-                        if (msg.id) sessionStorage.setItem('messageUserId', String(msg.id));
-                        sessionStorage.setItem('messageUser', msg.user || '');
-                      } catch {}
-                      router.push('/messages');
-                    }}
-                  >
-                    <Avatar className="h-10 w-10 flex-shrink-0">
-                      <AvatarImage src={msg.avatar || "/placeholder.svg"} />
-                      <AvatarFallback>{String(msg.user || '').charAt(0)}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium">{msg.user}</p>
-                      <p className="text-xs text-muted-foreground line-clamp-2">{msg.message}</p>
-                      <p className="text-xs text-muted-foreground mt-1">{msg.time}</p>
-                    </div>
-                    {!msg.read && (
-                      <div className="h-2 w-2 rounded-full bg-primary flex-shrink-0 mt-1" />
-                    )}
-                  </DropdownMenuItem>
+                    <DropdownMenuItem
+                      key={msg.id}
+                      className={`flex items-start gap-3 p-3 cursor-pointer ${!msg.read ? 'bg-primary/5' : ''
+                        }`}
+                      onClick={() => {
+                        try {
+                          if (msg.id) sessionStorage.setItem('messageUserId', String(msg.id));
+                          sessionStorage.setItem('messageUser', msg.user || '');
+                        } catch { }
+                        router.push('/messages');
+                      }}
+                    >
+                      <Avatar className="h-10 w-10 flex-shrink-0">
+                        <AvatarImage src={msg.avatar || "/placeholder.svg"} />
+                        <AvatarFallback>{String(msg.user || '').charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium">{msg.user}</p>
+                        <p className="text-xs text-muted-foreground line-clamp-2">{msg.message}</p>
+                        <p className="text-xs text-muted-foreground mt-1">{msg.time}</p>
+                      </div>
+                      {!msg.read && (
+                        <div className="h-2 w-2 rounded-full bg-primary flex-shrink-0 mt-1" />
+                      )}
+                    </DropdownMenuItem>
                   ))
                 )}
               </div>
@@ -293,9 +292,8 @@ export function Header() {
                     return (
                       <DropdownMenuItem
                         key={notif.id}
-                        className={`flex items-start gap-3 p-3 cursor-pointer ${
-                          !notif.read ? 'bg-primary/5' : ''
-                        }`}
+                        className={`flex items-start gap-3 p-3 cursor-pointer ${!notif.read ? 'bg-primary/5' : ''
+                          }`}
                         onClick={() => router.push('/notifications')}
                       >
                         <div className="mt-0.5">
@@ -326,12 +324,12 @@ export function Header() {
           </DropdownMenu>
 
           <ThemeToggle />
-          
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="h-9 w-9 rounded-full p-0">
                 <Avatar className="h-9 w-9 ring-2 ring-border hover:ring-primary/50 transition-all cursor-pointer">
-                  <AvatarImage src={currentUser?.avatar_url || currentUser?.avatar || currentUser?.other_avatar || "/placeholder.svg"} />
+                  <AvatarImage src={currentUser?.profile_image_url || currentUser?.avatar || currentUser?.other_avatar || "/placeholder.svg"} />
                   <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
                     {(currentUser?.full_name || currentUser?.name || currentUser?.user?.full_name || 'U')?.charAt(0) || 'U'}
                   </AvatarFallback>

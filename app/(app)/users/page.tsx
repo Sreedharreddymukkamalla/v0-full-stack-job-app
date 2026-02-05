@@ -43,7 +43,7 @@ export default function UsersPage() {
       // store a marker so the messages page can open the right conversation
       sessionStorage.setItem('messageUser', String(user.name || ''));
       sessionStorage.setItem('messageUserId', String(targetId));
-    } catch {}
+    } catch { }
     router.push('/messages');
   };
 
@@ -127,7 +127,7 @@ export default function UsersPage() {
               name: s.name || s.other_name || "",
               title: s.headline || s.other_headline || "",
               company: s.company || "",
-              avatar: s.avatar || s.avatar_url || "/placeholder.svg",
+              avatar: s.avatar || s.profile_image_url || "/placeholder.svg",
               banner: s.cover_image_url || s.banner || "",
               skills: [],
               type: "suggested",
@@ -196,7 +196,7 @@ export default function UsersPage() {
       try {
         sessionStorage.removeItem("suggestions_cache");
         sessionStorage.removeItem("suggestions_cache_ts");
-      } catch {}
+      } catch { }
       setSuggested((prev) => prev.filter((p) => p.id !== userId));
       setPending((prev) =>
         prev.filter((p) => p.connectionId !== createdConnectionId),

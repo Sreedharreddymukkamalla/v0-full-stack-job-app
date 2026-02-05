@@ -6,9 +6,9 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
-import { 
-  Send, 
-  Paperclip, 
+import {
+  Send,
+  Paperclip,
   Search,
   MoreVertical,
   CheckCheck,
@@ -72,7 +72,7 @@ export default function MessagesPage() {
             id: c.id,
             name: c.name || c.other_name || c.user?.name || c.display_name || '',
             role: c.role || c.title || c.user?.title || c.role_description || c.position || '',
-            avatar: c.avatar || c.user?.avatar || c.avatar_url || '/placeholder.svg',
+            avatar: c.avatar || c.user?.avatar || c.profile_image_url || '/placeholder.svg',
             lastMessage,
             timestamp,
             unread: Boolean(c.unread || c.unread_count || c.unreadMessages),
@@ -127,7 +127,7 @@ export default function MessagesPage() {
               return [entry, ...without];
             });
             setSelectedConversation(convoId);
-            try { markConversationRead(convoId); } catch {}
+            try { markConversationRead(convoId); } catch { }
           } catch (e) {
             console.error('[v0] Failed to open conversation from network', e);
           }
@@ -247,11 +247,11 @@ export default function MessagesPage() {
                   return prev.map((c) =>
                     Number(c.id) === convId
                       ? {
-                          ...c,
-                          lastMessage: msg.content,
-                          timestamp: msg.timestamp,
-                          unread: !fromMe ? (c.unread ? c.unread + 1 : 1) : c.unread,
-                        }
+                        ...c,
+                        lastMessage: msg.content,
+                        timestamp: msg.timestamp,
+                        unread: !fromMe ? (c.unread ? c.unread + 1 : 1) : c.unread,
+                      }
                       : c
                   );
                 }
@@ -288,10 +288,10 @@ export default function MessagesPage() {
                 prev.map((c) =>
                   Number(c.id) === convId
                     ? {
-                        ...c,
-                        lastMessage: newRow?.content ?? c.lastMessage,
-                        timestamp: newRow?.created_at ? new Date(newRow?.created_at).toLocaleString() : c.timestamp,
-                      }
+                      ...c,
+                      lastMessage: newRow?.content ?? c.lastMessage,
+                      timestamp: newRow?.created_at ? new Date(newRow?.created_at).toLocaleString() : c.timestamp,
+                    }
                     : c
                 )
               );
@@ -366,7 +366,7 @@ export default function MessagesPage() {
       // mark as read when opening
       try {
         markConversationRead(convoId);
-      } catch {}
+      } catch { }
     } catch (err) {
       console.error('[v0] Failed to open/create conversation', err);
     }
@@ -488,7 +488,7 @@ export default function MessagesPage() {
 
   const markConversationRead = (conversationId?: number) => {
     if (!conversationId) return;
-    void apiFetch(`/messages/conversations/${conversationId}/read`, { method: 'POST' }).catch(() => {});
+    void apiFetch(`/messages/conversations/${conversationId}/read`, { method: 'POST' }).catch(() => { });
     setConversationList((prev) => prev.map((c) => (c.id === conversationId ? { ...c, unread: 0 } : c)));
   };
 
@@ -497,7 +497,7 @@ export default function MessagesPage() {
       const ids = conversationList.filter((c: any) => Number(c.unread) > 0).map((c: any) => c.id);
       if (!ids.length) return;
       await Promise.allSettled(
-        ids.map((id) => apiFetch(`/messages/conversations/${id}/read`, { method: 'POST' }).catch(() => {}))
+        ids.map((id) => apiFetch(`/messages/conversations/${id}/read`, { method: 'POST' }).catch(() => { }))
       );
       setConversationList((prev) => prev.map((c) => ({ ...c, unread: 0 })));
     } catch (err) {
@@ -521,12 +521,12 @@ export default function MessagesPage() {
                   <MoreVertical className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => void markAllAsRead()}>
-                    <CheckCheck className="h-4 w-4 mr-2" />
-                    Mark all as read
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => void markAllAsRead()}>
+                  <CheckCheck className="h-4 w-4 mr-2" />
+                  Mark all as read
+                </DropdownMenuItem>
+              </DropdownMenuContent>
             </DropdownMenu>
           </div>
           <div className="relative">
@@ -554,11 +554,10 @@ export default function MessagesPage() {
                     if (hasUnread) markConversationRead(conv.id);
                   }
                 }}
-                className={`w-full p-4 text-left transition-all duration-200 border-b border-border/50 ${
-                  selectedConversation === conv.id
+                className={`w-full p-4 text-left transition-all duration-200 border-b border-border/50 ${selectedConversation === conv.id
                     ? 'bg-primary/5 border-l-2 border-l-primary'
                     : 'hover:bg-secondary/50'
-                }`}
+                  }`}
               >
                 <div className="flex items-start gap-3">
                   <div className="relative">
@@ -627,21 +626,21 @@ export default function MessagesPage() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-48">
-                    <DropdownMenuItem 
+                    <DropdownMenuItem
                       className="cursor-pointer"
                       onClick={handleArchiveConversation}
                     >
                       <Archive className="mr-2 h-4 w-4" />
                       Archive conversation
                     </DropdownMenuItem>
-                    <DropdownMenuItem 
+                    <DropdownMenuItem
                       className="cursor-pointer"
                       onClick={handleMuteConversation}
                     >
                       <Volume2 className="mr-2 h-4 w-4" />
                       {isMuted ? 'Unmute' : 'Mute'} notifications
                     </DropdownMenuItem>
-                    <DropdownMenuItem 
+                    <DropdownMenuItem
                       className="cursor-pointer"
                       onClick={handleBlockUser}
                     >
@@ -649,7 +648,7 @@ export default function MessagesPage() {
                       Block user
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem 
+                    <DropdownMenuItem
                       className="cursor-pointer text-destructive focus:text-destructive"
                       onClick={handleDeleteConversation}
                     >
@@ -672,11 +671,10 @@ export default function MessagesPage() {
                   className={`flex ${msg.isUser ? 'justify-end' : 'justify-start'}`}
                 >
                   <div
-                    className={`max-w-md px-4 py-3 shadow-sm ${
-                      msg.isUser
+                    className={`max-w-md px-4 py-3 shadow-sm ${msg.isUser
                         ? 'bg-primary text-primary-foreground rounded-2xl rounded-br-md'
                         : 'bg-card text-foreground rounded-2xl rounded-bl-md border border-border/50'
-                    }`}
+                      }`}
                   >
                     <p className="text-sm leading-relaxed">{msg.content}</p>
                     <div className={`flex items-center justify-end gap-1.5 mt-2 ${msg.isUser ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
