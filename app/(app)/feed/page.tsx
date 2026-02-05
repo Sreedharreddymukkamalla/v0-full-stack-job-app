@@ -231,7 +231,7 @@ export default function FeedPage() {
   };
 
   const handleCopyLink = (postId: string) => {
-    const link = `${window.location.origin}/post/${postId}`;
+    const link = `${window.location.origin}/posts/${postId}`;
     navigator.clipboard.writeText(link);
     console.log("[v0] Copied link:", link);
   };
