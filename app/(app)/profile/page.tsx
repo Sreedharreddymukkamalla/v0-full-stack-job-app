@@ -15,16 +15,19 @@ export default function ProfilePage() {
   const [currentProfile, setCurrentProfile] = useState<any>(() => getProfile());
   const isSelfProfile = true; // This would normally check if viewing own profile
   const [isEditMode, setIsEditMode] = useState(false);
-  const [formData, setFormData] = useState<any>({
+  
+  // Split formData into separate states
+  const [profileData, setProfileData] = useState<any>({
     name: '',
     title: '',
     location: '',
     bio: '',
     skills: [] as string[],
     newSkill: '',
-    experiences: [] as any[],
-    education: [] as any[],
   });
+
+  const [experienceData, setExperienceData] = useState<any[]>([]);
+  const [educationData, setEducationData] = useState<any[]>([]);
 
   // Load profile into local state on mount (re-populates after reload)
   useEffect(() => {
@@ -38,7 +41,7 @@ export default function ProfilePage() {
     }).catch(() => null);
   }, []);
 
-  // When profile is available, map it into the form state
+  // When profile is available, map it into the form states
   useEffect(() => {
     if (!currentProfile) return;
 
@@ -58,20 +61,21 @@ export default function ProfilePage() {
       year: ed.endDate || ed.year || '',
     }));
 
-    setFormData({
+    setProfileData({
       name: p.full_name || p.name || p.user?.full_name || '',
       title: p.headline || p.title || '',
       location: p.location || '',
       bio: p.summary || p.about || '',
       skills: p.skills || [],
       newSkill: '',
-      experiences: mappedExperiences,
-      education: mappedEducation,
     });
+    
+    setExperienceData(mappedExperiences);
+    setEducationData(mappedEducation);
   }, [currentProfile]);
 
   const handleSave = () => {
-    console.log('[v0] Saving profile:', formData);
+    console.log('[v0] Saving profile:', { profileData, experienceData, educationData });
     setIsEditMode(false);
   };
 
@@ -80,19 +84,19 @@ export default function ProfilePage() {
   };
 
   const addSkill = () => {
-    if (formData.newSkill.trim()) {
-      setFormData({
-        ...formData,
-        skills: [...formData.skills, formData.newSkill.trim()],
+    if (profileData.newSkill.trim()) {
+      setProfileData({
+        ...profileData,
+        skills: [...profileData.skills, profileData.newSkill.trim()],
         newSkill: ''
       });
     }
   };
 
   const removeSkill = (skillToRemove: string) => {
-    setFormData({
-      ...formData,
-      skills: formData.skills.filter(s => s !== skillToRemove)
+    setProfileData({
+      ...profileData,
+      skills: profileData.skills.filter(s => s !== skillToRemove)
     });
   };
 
@@ -104,26 +108,19 @@ export default function ProfilePage() {
       period: '',
       description: ''
     };
-    setFormData({
-      ...formData,
-      experiences: [newExp, ...formData.experiences]
-    });
+    setExperienceData([newExp, ...experienceData]);
   };
 
   const updateExperience = (id: number, field: string, value: string) => {
-    setFormData({
-      ...formData,
-      experiences: formData.experiences.map(exp =>
+    setExperienceData(
+      experienceData.map(exp =>
         exp.id === id ? { ...exp, [field]: value } : exp
       )
-    });
+    );
   };
 
   const removeExperience = (id: number) => {
-    setFormData({
-      ...formData,
-      experiences: formData.experiences.filter(exp => exp.id !== id)
-    });
+    setExperienceData(experienceData.filter(exp => exp.id !== id));
   };
 
   return (
@@ -164,9 +161,9 @@ export default function ProfilePage() {
               <div className="relative">
                 <Avatar className="h-36 w-36 border-4 border-card ring-4 ring-background shadow-xl group">
                   <AvatarImage src={currentProfile?.profile_image_url || currentProfile?.profile_image || currentProfile?.avatar || "/placeholder.svg"} />
-                  <AvatarFallback>{(formData.name || 'U').charAt(0)}</AvatarFallback>
+                  <AvatarFallback>{(profileData.name || 'U').charAt(0)}</AvatarFallback>
                 </Avatar>
-                {isSelfProfile && !isEditMode && (
+                {isSelfProfile && (
                   <Button
                     size="icon"
                     variant="secondary"
@@ -217,29 +214,41 @@ export default function ProfilePage() {
                       {isEditMode ? (
                     <div className="space-y-2">
                       <Input
-                        value={formData.name}
-                        onChange={(e) => setFormData({...formData, name: e.target.value})}
-                        placeholder="Your name"
-                        className="text-3xl font-bold h-auto py-1 px-2"
+                        value={profileData.name}
+                        onChange={(e) => setProfileData({ ...profileData, name: e.target.value })}
+                        placeholder="Your Name"
+                        className="text-xl font-bold"
                       />
                       <Input
-                        value={formData.title}
-                        onChange={(e) => setFormData({...formData, title: e.target.value})}
+                        value={profileData.title}
+                        onChange={(e) => setProfileData({ ...profileData, title: e.target.value })}
+                        placeholder="Job Title"
+                        className="text-base"
+                      />
+                      <Input
+                        value={profileData.location}
+                        onChange={(e) => setProfileData({ ...profileData, location: e.target.value })}
+                        placeholder="Location"
+                        className="text-sm"
+                      />
+                      <Input
+                        value={profileData.title}
+                        onChange={(e) => setProfileData({...profileData, title: e.target.value})}
                         placeholder="Your title"
                         className="text-lg h-auto py-1 px-2"
                       />
                       <Input
-                        value={formData.location}
-                        onChange={(e) => setFormData({...formData, location: e.target.value})}
+                        value={profileData.location}
+                        onChange={(e) => setProfileData({...profileData, location: e.target.value})}
                         placeholder="Location"
                         className="text-sm h-auto py-1 px-2"
                       />
                     </div>
-                      ) : (
-                    <>
-                      <h1 className="text-3xl font-bold text-foreground mt-2">{formData.name || 'John Doe'}</h1>
-                      <p className="text-lg text-foreground/80 font-medium">{formData.title}</p>
-                      <p className="text-sm text-muted-foreground mt-1">{formData.location}</p>
+                    ) : (
+                      <>
+                        <h1 className="text-3xl font-bold text-foreground mt-2">{profileData.name || 'John Doe'}</h1>
+                        <p className="text-lg text-foreground/80 font-medium">{profileData.title}</p>
+                        <p className="text-sm text-muted-foreground mt-1">{profileData.location}</p>
                     </>
                   )}
                 </div>
@@ -251,15 +260,15 @@ export default function ProfilePage() {
               <h3 className="font-semibold text-foreground mb-3">About</h3>
               {isEditMode ? (
                 <Textarea
-                  value={formData.bio}
-                  onChange={(e) => setFormData({...formData, bio: e.target.value})}
+                  value={profileData.bio}
+                  onChange={(e) => setProfileData({...profileData, bio: e.target.value})}
                   placeholder="Tell us about yourself"
                   className="resize-none min-h-[80px] text-base"
                   maxLength={500}
                 />
               ) : (
                 <p className="text-foreground text-base leading-relaxed">
-                  {formData.bio}
+                  {profileData.bio}
                 </p>
               )}
             </div>
@@ -270,7 +279,7 @@ export default function ProfilePage() {
               {isEditMode ? (
                 <div className="space-y-3">
                   <div className="flex flex-wrap gap-2">
-                    {formData.skills.map((skill) => (
+                    {profileData.skills.map((skill) => (
                       <Badge 
                         key={skill} 
                         variant="secondary"
@@ -283,8 +292,8 @@ export default function ProfilePage() {
                   </div>
                   <div className="flex gap-2">
                     <Input
-                      value={formData.newSkill}
-                      onChange={(e) => setFormData({...formData, newSkill: e.target.value})}
+                      value={profileData.newSkill}
+                      onChange={(e) => setProfileData({...profileData, newSkill: e.target.value})}
                       placeholder="Add a skill"
                       className="max-w-xs"
                       onKeyDown={(e) => {
@@ -306,7 +315,7 @@ export default function ProfilePage() {
                 </div>
               ) : (
                 <div className="flex flex-wrap gap-2">
-                  {formData.skills.map((skill) => (
+                  {profileData.skills.map((skill) => (
                     <Badge key={skill} variant="secondary">{skill}</Badge>
                   ))}
                 </div>
@@ -328,7 +337,7 @@ export default function ProfilePage() {
                       <Plus className="h-4 w-4" />
                       Add
                     </Button>
-                    {formData.experiences.length > 0 && (
+                    {experienceData.length > 0 && (
                       <Button 
                         variant="outline" 
                         size="sm"
@@ -353,7 +362,7 @@ export default function ProfilePage() {
                 )}
               </div>
               <div className="space-y-4">
-                {formData.experiences.map((exp, index) => (
+                {experienceData.map((exp, index) => (
                   <div key={exp.id} className={`border-l-2 ${index === 0 ? 'border-accent' : 'border-primary'} pl-4 relative`}>
                     {isEditMode && (
                       <Button
@@ -443,7 +452,7 @@ export default function ProfilePage() {
                       <Plus className="h-3 w-3" />
                       Add
                     </Button>
-                    {formData.education.length > 0 && (
+                    {educationData.length > 0 && (
                       <Button
                         variant="outline"
                         size="sm"
@@ -461,10 +470,10 @@ export default function ProfilePage() {
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      const newId = Math.max(...formData.education.map((e: any) => e.id), 0) + 1;
-                      setFormData({
-                        ...formData,
-                        education: [...formData.education, { id: newId, degree: '', school: '', year: '' }]
+                      const newId = Math.max(...educationData.map((e: any) => e.id), 0) + 1;
+                      setEducationData([
+                        ...educationData,
+                        { id: newId, degree: '', school: '', year: '' }
                       });
                     }}
                     className="bg-transparent gap-2 h-8"
@@ -476,17 +485,16 @@ export default function ProfilePage() {
               </div>
               {isEditMode ? (
                 <div className="space-y-4">
-                  {formData.education.map((edu: any, index: number) => (
+                  {educationData.map((edu: any, index: number) => (
                     <div key={edu.id} className="space-y-3 p-4 pt-6 border border-border rounded-lg relative">
-                      {formData.education.length > 1 && (
+                      {educationData.length > 1 && (
                         <Button
                           variant="ghost"
                           size="icon"
                           onClick={() => {
-                            setFormData({
-                              ...formData,
-                              education: formData.education.filter((e: any) => e.id !== edu.id)
-                            });
+                            setEducationData(
+                              educationData.filter((e: any) => e.id !== edu.id)
+                            );
                           }}
                           className="absolute -top-3 right-2 h-7 w-7 text-muted-foreground hover:bg-destructive hover:text-white transition-colors rounded-full flex items-center justify-center"
                         >
@@ -496,30 +504,30 @@ export default function ProfilePage() {
                       <Input
                         value={edu.degree}
                         onChange={(e) => {
-                          const updated = formData.education.map((e: any) => 
-                            e.id === edu.id ? {...e, degree: e.target.value} : e
+                          const updated = educationData.map((ed: any) => 
+                            ed.id === edu.id ? {...ed, degree: e.target.value} : ed
                           );
-                          setFormData({...formData, education: updated});
+                          setEducationData(updated);
                         }}
                         placeholder="Degree and Field of Study"
                       />
                       <Input
                         value={edu.school}
                         onChange={(e) => {
-                          const updated = formData.education.map((e: any) => 
-                            e.id === edu.id ? {...e, school: e.target.value} : e
+                          const updated = educationData.map((ed: any) => 
+                            ed.id === edu.id ? {...ed, school: e.target.value} : ed
                           );
-                          setFormData({...formData, education: updated});
+                          setEducationData(updated);
                         }}
                         placeholder="School or University"
                       />
                       <Input
                         value={edu.year}
                         onChange={(e) => {
-                          const updated = formData.education.map((e: any) => 
-                            e.id === edu.id ? {...e, year: e.target.value} : e
+                          const updated = educationData.map((ed: any) => 
+                            ed.id === edu.id ? {...ed, year: e.target.value} : ed
                           );
-                          setFormData({...formData, education: updated});
+                          setEducationData(updated);
                         }}
                         placeholder="Graduation Year"
                       />
@@ -528,7 +536,7 @@ export default function ProfilePage() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {formData.education.map((edu: any) => (
+                  {educationData.map((edu: any) => (
                     <div key={edu.id} className="flex items-start gap-3">
                       <div className="h-12 w-12 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
                         <span className="text-sm font-bold text-foreground">
@@ -615,7 +623,7 @@ export default function ProfilePage() {
                     </Avatar>
                     <div>
                       <p className="font-semibold text-foreground">{currentProfile?.full_name}</p>
-                      <p className="text-sm text-muted-foreground leading-tight">{formData.title}</p>
+                      <p className="text-sm text-muted-foreground leading-tight">{profileData.title}</p>
                       <p className="text-xs text-muted-foreground/70 mt-0.5">
                         {formatTimeAgo(post.created_at)}
                       </p>
