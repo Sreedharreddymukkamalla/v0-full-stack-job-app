@@ -191,37 +191,11 @@ export default function ProfilePage() {
                     }
                   }}
                 />
-                {isEditMode && (
-                  <>
-                    <Input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      id="avatar-upload"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          console.log('[v0] Profile photo selected:', file.name);
-                        }
-                      }}
-                    />
-                    <Button
-                      size="icon"
-                      variant="secondary"
-                      className="absolute bottom-0 right-0 h-8 w-8 rounded-full shadow-md"
-                      onClick={() => document.getElementById('avatar-upload')?.click()}
-                    >
-                      <Camera className="h-4 w-4" />
-                    </Button>
-                  </>
-                )}
               </div>
                 <div className="mt-2">
-                  <>
-                    <h1 className="text-3xl font-bold text-foreground mt-2">{profileData.name || 'John Doe'}</h1>
-                    <p className="text-lg text-foreground/80 font-medium">{profileData.title}</p>
-                    <p className="text-sm text-muted-foreground mt-1">{profileData.location}</p>
-                  </>
+                  <h1 className="text-3xl font-bold text-foreground mt-2">{profileData.name || 'John Doe'}</h1>
+                  <p className="text-lg text-foreground/80 font-medium">{profileData.title}</p>
+                  <p className="text-sm text-muted-foreground mt-1">{profileData.location}</p>
                 </div>
               </div>
             </div>
