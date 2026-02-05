@@ -1,16 +1,16 @@
-'use client';
+"use client";
 
-import React from "react"
-import Image from 'next/image'
+import React from "react";
+import Image from "next/image";
 
-import { useState } from 'react';
+import { useState } from "react";
 import { AvatarFallback } from "@/components/ui/avatar";
 import { AvatarImage } from "@/components/ui/avatar";
 import { Avatar } from "@/components/ui/avatar";
 import { SidebarSeparator } from "@/components/ui/sidebar";
 import { useRouter } from "next/navigation";
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   Home,
   User,
@@ -26,17 +26,18 @@ import {
   LogOut,
   FileEdit,
   AlertCircle,
-} from 'lucide-react';
+  PanelRightClose,
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import {
   Sidebar,
   SidebarContent,
@@ -46,22 +47,22 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
-} from '@/components/ui/sidebar';
-import { Button } from '@/components/ui/button';
-import { getCurrentUser, signOut } from '@/lib/auth';
-import { apiFetch } from '@/lib/api';
-import { toast } from 'sonner';
+} from "@/components/ui/sidebar";
+import { Button } from "@/components/ui/button";
+import { getCurrentUser, signOut } from "@/lib/auth";
+import { apiFetch } from "@/lib/api";
+import { toast } from "sonner";
 
 const menuItems = [
-  { icon: Home, label: 'Home', href: '/feed' },
-  { icon: User, label: 'Profile', href: '/profile' },
-  { icon: Users, label: 'My Network', href: '/users' },
-  { icon: Briefcase, label: 'Jobs', href: '/jobs' },
-  { icon: FileText, label: 'Jobs Applied', href: '/jobs/applied' },
-  { icon: MessageSquare, label: 'Messaging', href: '/messages' },
-  { icon: FileEdit, label: 'Resume Builder', href: '/resume' },
-  { icon: Triangle, label: 'AIM', href: '/agent' },
-  { icon: ClipboardList, label: 'Application Details', href: '/applications' },
+  { icon: Home, label: "Home", href: "/feed" },
+  { icon: User, label: "Profile", href: "/profile" },
+  { icon: Users, label: "My Network", href: "/users" },
+  { icon: Briefcase, label: "Jobs", href: "/jobs" },
+  { icon: FileText, label: "Jobs Applied", href: "/jobs/applied" },
+  { icon: MessageSquare, label: "Messaging", href: "/messages" },
+  { icon: FileEdit, label: "Resume Builder", href: "/resume" },
+  { icon: Triangle, label: "AIM", href: "/agent" },
+  { icon: ClipboardList, label: "Application Details", href: "/applications" },
 ];
 
 export function AppSidebar() {
@@ -69,56 +70,64 @@ export function AppSidebar() {
   const { toggleSidebar, open } = useSidebar();
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
   const [reportForm, setReportForm] = useState({
-    title: '',
-    description: '',
-    type: 'bug'
+    title: "",
+    description: "",
+    type: "bug",
   });
 
   const isActive = (href: string) => {
     // Exact match for jobs to prevent highlighting when on jobs/applied
-    if (href === '/jobs') {
-      return pathname === '/jobs';
+    if (href === "/jobs") {
+      return pathname === "/jobs";
     }
-    return pathname === href || pathname.startsWith(href + '/');
+    return pathname === href || pathname.startsWith(href + "/");
   };
 
   const handleReportSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const reportMessage = `${reportForm.title}\n\n${reportForm.description}`.trim();
+    const reportMessage =
+      `${reportForm.title}\n\n${reportForm.description}`.trim();
     try {
-      await apiFetch('/issues', {
-        method: 'POST',
+      await apiFetch("/issues", {
+        method: "POST",
         json: { message: reportMessage },
       });
       // themed toast feedback
-      toast.success('Thanks — your report has been submitted. We will review it shortly.');
+      toast.success(
+        "Thanks — your report has been submitted. We will review it shortly.",
+      );
     } catch (err) {
-      console.error('[v0] Failed to submit issue report', err);
-      toast.error('Failed to submit report. Please try again later.');
+      console.error("[v0] Failed to submit issue report", err);
+      toast.error("Failed to submit report. Please try again later.");
     } finally {
       setIsReportDialogOpen(false);
-      setReportForm({ title: '', description: '', type: 'bug' });
+      setReportForm({ title: "", description: "", type: "bug" });
     }
   };
 
   return (
-    <Sidebar className="border-r border-sidebar-border bg-sidebar">
-      <SidebarHeader className="h-16 flex items-center justify-between px-4 border-b border-sidebar-border">
-        {open && (
+    <Sidebar
+      collapsible="icon"
+      className="border-r border-sidebar-border bg-sidebar mt-[63px] h-[calc(100vh-63px)] transition-all duration-200"
+    >
+      <SidebarHeader className="h-12 flex items-center px-4 border-b border-sidebar-border">
+        <div className="flex items-center gap-2 w-full">
           <div className="flex items-center gap-2">
-            <Image 
-              src="/logo.png" 
-              alt="AIMPLOY" 
-              width={32} 
-              height={32} 
-              className="w-8 h-8"
-            />
-            <span className="text-lg font-bold tracking-tight text-sidebar-foreground">AIMPLOY</span>
+            {open && (
+              <span className="text-md font-bold tracking-tight text-sidebar-foreground">AIMPLOY</span>
+            )}
           </div>
-        )}
-        <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0" onClick={toggleSidebar}>
-          <PanelLeftClose className="h-4 w-4" />
-        </Button>
+
+          <div className={`${open ? 'ml-auto' : 'justify-center w-full flex'}`}>
+            <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0" onClick={toggleSidebar}>
+              {open ? (
+                <PanelLeftClose className="h-4 w-4" />
+              ) : (
+                <PanelRightClose className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
+        </div>
       </SidebarHeader>
 
       <SidebarContent className="px-2 py-4">
@@ -128,11 +137,18 @@ export function AppSidebar() {
               <SidebarMenuButton
                 asChild
                 isActive={isActive(item.href)}
-                className="h-[46px] rounded-lg transition-colors hover:bg-sidebar-accent data-[active=true]:bg-accent data-[active=true]:text-accent-foreground"
+                className="h-8 rounded-lg transition-colors hover:bg-sidebar-accent data-[active=true]:bg-accent data-[active=true]:text-accent-foreground"
                 tooltip={!open ? item.label : undefined}
               >
-                <Link href={item.href} className={`flex items-center ${open ? 'gap-4 px-4' : 'justify-center px-0'}`}>
-                  <item.icon className="h-5 w-5 flex-shrink-0" strokeWidth={2} />
+                <Link
+                  href={item.href}
+                  className={`flex items-center ${open ? "gap-4 px-4" : "justify-center px-0"}`}
+                >
+                  <item.icon
+                    className="flex-shrink-0"
+                    strokeWidth={2}
+                    style={{ width: 24, height: 24 }}
+                  />
                   {open && <span className="font-normal">{item.label}</span>}
                 </Link>
               </SidebarMenuButton>
@@ -146,11 +162,13 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <SidebarMenuButton
               onClick={() => setIsReportDialogOpen(true)}
-              className="h-[46px] rounded-lg transition-colors hover:bg-sidebar-accent"
+              className="h-8 rounded-lg transition-colors hover:bg-sidebar-accent"
               tooltip={!open ? "Report Issue" : undefined}
             >
-              <div className={`flex items-center ${open ? 'gap-4 px-4' : 'justify-center px-0'}`}>
-                <Flag className="h-5 w-5 flex-shrink-0" strokeWidth={2} />
+              <div
+                className={`flex items-center ${open ? "gap-4 px-4" : "justify-center px-0"}`}
+              >
+                <Flag className="flex-shrink-0" strokeWidth={2} style={{ width: 24, height: 24 }} />
                 {open && <span className="font-normal">Report Issue</span>}
               </div>
             </SidebarMenuButton>
@@ -166,7 +184,8 @@ export function AppSidebar() {
               Report an Issue
             </DialogTitle>
             <DialogDescription>
-              Help us improve by reporting bugs or suggesting features. We'll review your feedback shortly.
+              Help us improve by reporting bugs or suggesting features. We'll
+              review your feedback shortly.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleReportSubmit} className="space-y-4 mt-4">
@@ -175,7 +194,9 @@ export function AppSidebar() {
               <select
                 id="issue-type"
                 value={reportForm.type}
-                onChange={(e) => setReportForm({...reportForm, type: e.target.value})}
+                onChange={(e) =>
+                  setReportForm({ ...reportForm, type: e.target.value })
+                }
                 className="w-full h-10 px-3 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               >
                 <option value="bug">Bug Report</option>
@@ -191,7 +212,9 @@ export function AppSidebar() {
                 id="issue-title"
                 placeholder="Brief description of the issue"
                 value={reportForm.title}
-                onChange={(e) => setReportForm({...reportForm, title: e.target.value})}
+                onChange={(e) =>
+                  setReportForm({ ...reportForm, title: e.target.value })
+                }
                 required
               />
             </div>
@@ -202,7 +225,9 @@ export function AppSidebar() {
                 id="issue-description"
                 placeholder="Please provide detailed information about the issue..."
                 value={reportForm.description}
-                onChange={(e) => setReportForm({...reportForm, description: e.target.value})}
+                onChange={(e) =>
+                  setReportForm({ ...reportForm, description: e.target.value })
+                }
                 className="min-h-[120px] resize-none"
                 required
               />
@@ -217,9 +242,7 @@ export function AppSidebar() {
               >
                 Cancel
               </Button>
-              <Button type="submit">
-                Submit Report
-              </Button>
+              <Button type="submit">Submit Report</Button>
             </div>
           </form>
         </DialogContent>
