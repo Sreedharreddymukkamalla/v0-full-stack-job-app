@@ -14,9 +14,10 @@ import { formatTimeAgo } from '@/lib/utils'; // Assuming formatTimeAgo is declar
 export default function ProfilePage() {
   const [currentProfile, setCurrentProfile] = useState<any>(() => getProfile());
   const isSelfProfile = true; // This would normally check if viewing own profile
-  const [isEditMode, setIsEditMode] = useState(false);
   
-  // Split formData into separate states
+  // State for section-wise editing
+  const [editingSection, setEditingSection] = useState<string | null>(null);
+  
   const [profileData, setProfileData] = useState<any>({
     name: '',
     title: '',
@@ -74,13 +75,18 @@ export default function ProfilePage() {
     setEducationData(mappedEducation);
   }, [currentProfile]);
 
-  const handleSave = () => {
-    console.log('[v0] Saving profile:', { profileData, experienceData, educationData });
-    setIsEditMode(false);
+  const handleSaveSection = (section: string) => {
+    console.log(`[v0] Saving ${section}:`, {
+      profile: section === 'profile' ? profileData : null,
+      experience: section === 'experience' ? experienceData : null,
+      education: section === 'education' ? educationData : null,
+      skills: section === 'skills' ? profileData.skills : null
+    });
+    setEditingSection(null);
   };
 
-  const handleCancel = () => {
-    setIsEditMode(false);
+  const handleCancelEdit = () => {
+    setEditingSection(null);
   };
 
   const addSkill = () => {
@@ -131,7 +137,7 @@ export default function ProfilePage() {
           {/* Banner */}
           <div className="h-56 bg-gradient-to-r from-primary via-accent to-primary bg-[length:200%_100%] animate-gradient relative group">
             {/* Edit Cover Photo Button */}
-            {isSelfProfile && !isEditMode && (
+            {isSelfProfile && (
               <Button
                 size="sm"
                 variant="secondary"
@@ -185,87 +191,56 @@ export default function ProfilePage() {
                     }
                   }}
                 />
-                {isEditMode && (
-                  <>
-                    <Input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      id="avatar-upload"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          console.log('[v0] Profile photo selected:', file.name);
-                        }
-                      }}
-                    />
-                    <Button
-                      size="icon"
-                      variant="secondary"
-                      className="absolute bottom-0 right-0 h-8 w-8 rounded-full shadow-md"
-                      onClick={() => document.getElementById('avatar-upload')?.click()}
-                    >
-                      <Camera className="h-4 w-4" />
-                    </Button>
-                  </>
-                )}
               </div>
                 <div className="mt-2">
-                      {isEditMode ? (
-                    <div className="space-y-2">
-                      <Input
-                        value={profileData.name}
-                        onChange={(e) => setProfileData({ ...profileData, name: e.target.value })}
-                        placeholder="Your Name"
-                        className="text-xl font-bold"
-                      />
-                      <Input
-                        value={profileData.title}
-                        onChange={(e) => setProfileData({ ...profileData, title: e.target.value })}
-                        placeholder="Job Title"
-                        className="text-base"
-                      />
-                      <Input
-                        value={profileData.location}
-                        onChange={(e) => setProfileData({ ...profileData, location: e.target.value })}
-                        placeholder="Location"
-                        className="text-sm"
-                      />
-                      <Input
-                        value={profileData.title}
-                        onChange={(e) => setProfileData({...profileData, title: e.target.value})}
-                        placeholder="Your title"
-                        className="text-lg h-auto py-1 px-2"
-                      />
-                      <Input
-                        value={profileData.location}
-                        onChange={(e) => setProfileData({...profileData, location: e.target.value})}
-                        placeholder="Location"
-                        className="text-sm h-auto py-1 px-2"
-                      />
-                    </div>
-                    ) : (
-                      <>
-                        <h1 className="text-3xl font-bold text-foreground mt-2">{profileData.name || 'John Doe'}</h1>
-                        <p className="text-lg text-foreground/80 font-medium">{profileData.title}</p>
-                        <p className="text-sm text-muted-foreground mt-1">{profileData.location}</p>
-                    </>
-                  )}
+                  <h1 className="text-3xl font-bold text-foreground mt-2">{profileData.name || 'John Doe'}</h1>
+                  <p className="text-lg text-foreground/80 font-medium">{profileData.title}</p>
+                  <p className="text-sm text-muted-foreground mt-1">{profileData.location}</p>
                 </div>
               </div>
             </div>
 
             {/* About */}
             <div className="mb-6">
-              <h3 className="font-semibold text-foreground mb-3">About</h3>
-              {isEditMode ? (
-                <Textarea
-                  value={profileData.bio}
-                  onChange={(e) => setProfileData({...profileData, bio: e.target.value})}
-                  placeholder="Tell us about yourself"
-                  className="resize-none min-h-[80px] text-base"
-                  maxLength={500}
-                />
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-semibold text-foreground">About</h3>
+                {isSelfProfile && editingSection !== 'about' && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setEditingSection('about')}
+                    className="bg-transparent gap-2 h-8"
+                  >
+                    <Pencil className="h-4 w-4" />
+                    Edit
+                  </Button>
+                )}
+              </div>
+              {editingSection === 'about' ? (
+                <div className="space-y-2">
+                  <Textarea
+                    value={profileData.bio}
+                    onChange={(e) => setProfileData({...profileData, bio: e.target.value})}
+                    placeholder="Tell us about yourself"
+                    className="resize-none min-h-[80px] text-base"
+                    maxLength={500}
+                  />
+                  <div className="flex justify-end gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={handleCancelEdit}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                    <Button 
+                      size="sm"
+                      onClick={() => handleSaveSection('about')}
+                    >
+                      <Check className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
               ) : (
                 <p className="text-foreground text-base leading-relaxed">
                   {profileData.bio}
@@ -275,8 +250,21 @@ export default function ProfilePage() {
 
             {/* Skills */}
             <div className="mb-6">
-              <h3 className="font-semibold text-foreground mb-3">Skills & Expertise</h3>
-              {isEditMode ? (
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-semibold text-foreground">Skills & Expertise</h3>
+                {isSelfProfile && editingSection !== 'skills' && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setEditingSection('skills')}
+                    className="bg-transparent gap-2 h-8"
+                  >
+                    <Pencil className="h-4 w-4" />
+                    Edit
+                  </Button>
+                )}
+              </div>
+              {editingSection === 'skills' ? (
                 <div className="space-y-3">
                   <div className="flex flex-wrap gap-2">
                     {profileData.skills.map((skill) => (
@@ -309,7 +297,22 @@ export default function ProfilePage() {
                       onClick={addSkill}
                       className="bg-transparent"
                     >
-                      Add
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={handleCancelEdit}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                    <Button 
+                      size="sm"
+                      onClick={() => handleSaveSection('skills')}
+                    >
+                      <Check className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
@@ -326,12 +329,12 @@ export default function ProfilePage() {
             <div className="mb-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-semibold text-foreground">Experience</h3>
-                {isSelfProfile && !isEditMode && (
+                {isSelfProfile && editingSection !== 'experience' && (
                   <div className="flex gap-2">
                     <Button 
                       variant="outline" 
                       size="sm"
-                      onClick={() => setIsEditMode(true)}
+                      onClick={() => setEditingSection('experience')}
                       className="bg-transparent gap-2 h-8"
                     >
                       <Plus className="h-4 w-4" />
@@ -341,7 +344,7 @@ export default function ProfilePage() {
                       <Button 
                         variant="outline" 
                         size="sm"
-                        onClick={() => setIsEditMode(true)}
+                        onClick={() => setEditingSection('experience')}
                         className="bg-transparent gap-2 h-8"
                       >
                         <Pencil className="h-4 w-4" />
@@ -350,21 +353,11 @@ export default function ProfilePage() {
                     )}
                   </div>
                 )}
-                {isEditMode && (
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={addExperience}
-                    className="bg-transparent"
-                  >
-                    Add Experience
-                  </Button>
-                )}
               </div>
-              <div className="space-y-4">
-                {experienceData.map((exp, index) => (
-                  <div key={exp.id} className={`border-l-2 ${index === 0 ? 'border-accent' : 'border-primary'} pl-4 relative`}>
-                    {isEditMode && (
+              {editingSection === 'experience' ? (
+                <div className="space-y-4">
+                  {experienceData.map((exp, index) => (
+                    <div key={exp.id} className={`border-l-2 ${index === 0 ? 'border-accent' : 'border-primary'} pl-4 relative`}>
                       <Button
                         variant="ghost"
                         size="icon"
@@ -373,8 +366,6 @@ export default function ProfilePage() {
                       >
                         <X className="h-3 w-3" />
                       </Button>
-                    )}
-                    {isEditMode ? (
                       <div className="space-y-2">
                         <Input
                           value={exp.title}
@@ -403,50 +394,47 @@ export default function ProfilePage() {
                           className="resize-none min-h-[60px]"
                         />
                       </div>
-                    ) : (
-                      <>
-                        <h4 className="font-semibold text-foreground">{exp.title}</h4>
-                        <p className="text-sm text-muted-foreground">{exp.company} • {exp.period}</p>
-                        <p className="text-sm text-foreground mt-2">{exp.description}</p>
-                      </>
-                    )}
+                    </div>
+                  ))}
+                  <div className="flex justify-end gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={handleCancelEdit}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                    <Button 
+                      size="sm"
+                      onClick={() => handleSaveSection('experience')}
+                    >
+                      <Check className="h-4 w-4" />
+                    </Button>
                   </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Keeping original static experience for reference - will be removed */}
-            <div className="mb-6 hidden">
-              <h3 className="font-semibold text-foreground mb-4">Experience</h3>
-              <div className="space-y-4">
-                <div className="border-l-2 border-accent pl-4">
-                  <h4 className="font-semibold text-foreground">Senior Frontend Engineer</h4>
-                  <p className="text-sm text-muted-foreground">Vercel • 2021 - Present</p>
-                  <p className="text-sm text-foreground mt-2">Led development of core platform features serving 2M+ developers. Improved performance by 40%.</p>
                 </div>
-                <div className="border-l-2 border-primary pl-4">
-                  <h4 className="font-semibold text-foreground">Frontend Engineer</h4>
-                  <p className="text-sm text-muted-foreground">Stripe • 2018 - 2021</p>
-                  <p className="text-sm text-foreground mt-2">Built developer-facing APIs and dashboards. Mentored 5 junior engineers.</p>
+              ) : (
+                <div className="space-y-4">
+                  {experienceData.map((exp, index) => (
+                    <div key={exp.id} className={`border-l-2 ${index === 0 ? 'border-accent' : 'border-primary'} pl-4`}>
+                      <h4 className="font-semibold text-foreground">{exp.title}</h4>
+                      <p className="text-sm text-muted-foreground">{exp.company} • {exp.period}</p>
+                      <p className="text-sm text-foreground mt-2">{exp.description}</p>
+                    </div>
+                  ))}
                 </div>
-                <div className="border-l-2 border-secondary pl-4">
-                  <h4 className="font-semibold text-foreground">Junior Developer</h4>
-                  <p className="text-sm text-muted-foreground">Startup XYZ • 2016 - 2018</p>
-                  <p className="text-sm text-foreground mt-2">Started career building full-stack features for seed-stage startup.</p>
-                </div>
-              </div>
+              )}
             </div>
 
             {/* Education */}
             <div className="mb-6">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-semibold text-foreground">Education</h3>
-                {isSelfProfile && !isEditMode && (
+                {isSelfProfile && editingSection !== 'education' && (
                   <div className="flex gap-2">
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setIsEditMode(true)}
+                      onClick={() => setEditingSection('education')}
                       className="bg-transparent gap-2 h-8"
                     >
                       <Plus className="h-3 w-3" />
@@ -456,7 +444,7 @@ export default function ProfilePage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setIsEditMode(true)}
+                        onClick={() => setEditingSection('education')}
                         className="bg-transparent gap-2 h-8"
                       >
                         <Pencil className="h-4 w-4" />
@@ -465,25 +453,8 @@ export default function ProfilePage() {
                     )}
                   </div>
                 )}
-                {isEditMode && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      const newId = educationData.length > 0 ? Math.max(...educationData.map((e: any) => e.id)) + 1 : 1;
-                      setEducationData([
-                        ...educationData,
-                        { id: newId, degree: '', school: '', year: '' }
-                      ]);
-                    }}
-                    className="bg-transparent gap-2 h-8"
-                  >
-                    <Plus className="h-3 w-3" />
-                    Add Education
-                  </Button>
-                )}
               </div>
-              {isEditMode ? (
+              {editingSection === 'education' ? (
                 <div className="space-y-4">
                   {educationData.map((edu: any, index: number) => (
                     <div key={edu.id} className="space-y-3 p-4 pt-6 border border-border rounded-lg relative">
@@ -533,6 +504,36 @@ export default function ProfilePage() {
                       />
                     </div>
                   ))}
+                  <div className="flex justify-end gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        const newId = educationData.length > 0 ? Math.max(...educationData.map((e: any) => e.id)) + 1 : 1;
+                        setEducationData([
+                          ...educationData,
+                          { id: newId, degree: '', school: '', year: '' }
+                        ]);
+                      }}
+                      className="bg-transparent gap-2 h-8"
+                    >
+                      <Plus className="h-3 w-3" />
+                      Add Education
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={handleCancelEdit}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                    <Button 
+                      size="sm"
+                      onClick={() => handleSaveSection('education')}
+                    >
+                      <Check className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -552,116 +553,8 @@ export default function ProfilePage() {
                 </div>
               )}
             </div>
-            {isSelfProfile && !isEditMode && (
-              <div className="flex justify-end pt-4 border-t border-border/50">
-                <Button 
-                  variant="outline" 
-                  className="gap-2 bg-transparent"
-                  onClick={() => setIsEditMode(true)}
-                >
-                  <Edit3 className="h-4 w-4" />
-                  Edit Profile
-                </Button>
-              </div>
-            )}
-            
-            {isSelfProfile && isEditMode && (
-              <div className="flex justify-end gap-2 pt-4 border-t border-border/50">
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  className="gap-2 bg-transparent"
-                  onClick={handleCancel}
-                >
-                  <X className="h-4 w-4" />
-                  Cancel
-                </Button>
-                <Button 
-                  size="sm"
-                  className="gap-2"
-                  onClick={handleSave}
-                >
-                  <Check className="h-4 w-4" />
-                  Save
-                </Button>
-              </div>
-            )}
           </div>
         </Card>
-
-        {/* Posts Section */}
-        <div>
-          <h2 className="text-2xl font-bold text-foreground mb-4">Recent Posts</h2>
-          <div className="space-y-4">
-            {[
-              {
-                id: 1,
-                content: 'Just completed a workshop on advanced React patterns. The key takeaway: composition over inheritance leads to more maintainable code.',
-                likes: 45,
-                comments: 12,
-                shares: 5,
-                created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
-              },
-              {
-                id: 2,
-                content: 'Excited to announce that I will be speaking at React Conf 2024! Looking forward to sharing insights on building scalable applications.',
-                likes: 89,
-                comments: 24,
-                shares: 15,
-                created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-              }
-            ].map((post) => (
-              <Card key={post.id} className="p-5 shadow-sm border-border/50 hover:shadow-md transition-shadow duration-200">
-                {/* Post Header */}
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex gap-3">
-                    <Avatar className="h-11 w-11 ring-2 ring-border">
-                      <AvatarImage src={currentProfile?.profile_image_url || "https://github.com/shadcn.png"} />
-                      <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                        {currentProfile?.full_name?.charAt(0)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="font-semibold text-foreground">{currentProfile?.full_name}</p>
-                      <p className="text-sm text-muted-foreground leading-tight">{profileData.title}</p>
-                      <p className="text-xs text-muted-foreground/70 mt-0.5">
-                        {formatTimeAgo(post.created_at)}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Post Content */}
-                <p className="text-foreground leading-relaxed mb-4">{post.content}</p>
-
-                {/* Engagement Stats */}
-                <div className="flex items-center justify-between text-sm text-muted-foreground py-2 border-y border-border/50">
-                  <span>{post.likes} likes</span>
-                  <div className="flex gap-3">
-                    <span>{post.comments} comments</span>
-                    <span>{post.shares} shares</span>
-                  </div>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="flex items-center justify-around pt-2">
-                  <Button variant="ghost" className="flex-1 gap-2 rounded-lg hover:bg-secondary h-10">
-                    <ThumbsUp className="h-4 w-4" />
-                    <span className="font-medium">Like</span>
-                  </Button>
-                  <Button variant="ghost" className="flex-1 gap-2 rounded-lg hover:bg-secondary h-10">
-                    <MessageCircle className="h-4 w-4" />
-                    <span className="font-medium">Comment</span>
-                  </Button>
-                  <Button variant="ghost" className="flex-1 gap-2 rounded-lg hover:bg-secondary h-10">
-                    <Share2 className="h-4 w-4" />
-                    <span className="font-medium">Share</span>
-                  </Button>
-                </div>
-              </Card>
-            ))}
-          </div>
-        </div>
       </div>
     </div>
   );
