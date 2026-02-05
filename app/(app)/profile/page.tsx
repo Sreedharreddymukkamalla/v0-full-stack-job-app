@@ -145,36 +145,19 @@ export default function ProfilePage() {
                 Edit Cover
               </Button>
             )}
-            {isEditMode && (
-              <Input
-                type="file"
-                accept="image/*"
-                className="hidden"
-                id="cover-upload"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    console.log('[v0] Cover photo selected:', file.name);
-                  }
-                }}
-              />
-            )}
-            {!isEditMode && (
-              <Input
-                type="file"
-                accept="image/*"
-                className="hidden"
-                id="cover-upload"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    console.log('[v0] Cover photo selected:', file.name);
-                  }
-                }}
-              />
-            )}
-
-          {/* Profile Info */}
+            <Input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              id="cover-upload"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  console.log('[v0] Cover photo selected:', file.name);
+                }
+              }}
+            />
+          </div>
           <div className="px-6 pb-6">
             <div className="flex flex-col md:flex-row md:items-start md:justify-between -mt-20 relative z-10 mb-6">
               <div className="flex flex-col md:flex-row items-start gap-4">
