@@ -10,6 +10,8 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Users, FileText, Briefcase } from 'lucide-react';
 
+export const dynamic = 'force-dynamic';
+
 interface SearchResult {
   people: any[];
   posts: any[];
