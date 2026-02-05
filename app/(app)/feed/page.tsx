@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
+import Link from "next/link";
 import {
   ThumbsUp,
   MessageCircle,
@@ -386,9 +387,11 @@ export default function FeedPage() {
                           </AvatarFallback>
                         </Avatar>
                         <div>
-                          <p className="font-semibold text-foreground hover:text-primary cursor-pointer transition-colors">
-                            {author?.name}
-                          </p>
+                          <Link href={`/users/${author?.id}`}>
+                            <p className="font-semibold text-foreground hover:text-primary cursor-pointer transition-colors">
+                              {author?.name}
+                            </p>
+                          </Link>
                           <p className="text-sm text-muted-foreground leading-tight">
                             {author?.title} at {author?.company}
                           </p>
