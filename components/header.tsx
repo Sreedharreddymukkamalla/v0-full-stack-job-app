@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Search as SearchIcon, Bell, Plus, Menu, User, Settings, LogOut, MessageSquare, UserPlus, Briefcase, Triangle } from 'lucide-react';
+import { Search as SearchIcon, Bell, Plus, Menu, User, Settings, LogOut, MessageSquare, UserPlus, Briefcase } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { SidebarTrigger, useSidebar } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
@@ -186,78 +186,196 @@ export function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-40 w-screen border-b border-border bg-background">
-      {/* Top Bar - Logo and Search */}
-      <div className="flex h-16 items-center justify-between gap-4 px-4 md:px-6 border-b border-border">
-        {/* Left: Logo */}
-        <div className="flex items-center gap-2">
-          <div className="flex items-center justify-center w-8 h-8">
-            <Triangle className="w-6 h-6 text-primary" />
+    <header className="sticky top-0 z-40 w-screen border-b border-border bg-card/80 backdrop-blur-md h-[63px]">
+      <div className="flex h-[63px] items-center justify-between gap-4 px-4 md:px-6">
+        <div className="flex items-center gap-3 flex-1">
+          <SidebarTrigger className="md:hidden h-9 w-9">
+            <Menu className="h-5 w-5" />
+          </SidebarTrigger>
+
+          {/* Show logo and AIMPLOY text when sidebar is closed */}
+          {!open && (
+            <div className="hidden md:flex items-center gap-2">
+              <Image 
+                src="/logo.png" 
+                alt="AIMPLOY" 
+                width={32} 
+                height={32} 
+                className="w-8 h-8"
+              />
+              <span className="font-semibold text-lg text-foreground">AIMPLOY</span>
+            </div>
+          )}
+
+          <div className="flex-1 max-w-lg hidden md:block">
+            <div className="relative">
+              <SearchIcon className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search jobs, people, companies..."
+                className="pl-10 h-10 bg-secondary/50 border-0 rounded-xl focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-background transition-all"
+              />
+            </div>
           </div>
         </div>
 
-        {/* Right: Search */}
-        <div className="flex-1 max-w-md hidden md:block">
-          <div className="relative">
-            <SearchIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Search jobs..."
-              className="pl-10 h-10 bg-background border border-border rounded-lg focus-visible:ring-1 focus-visible:ring-primary/50 transition-all"
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Bottom Bar - AIMPLOY Text and Actions */}
-      <div className="flex h-14 items-center justify-between gap-4 px-4 md:px-6">
-        <span className="text-base font-semibold text-foreground">AIMPLOY</span>
-        
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" className="h-8 w-8">
-            <Plus className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8 relative">
-            <Bell className="h-4 w-4" />
-            {unreadNotifCount > 0 && (
-              <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-destructive">
-                {unreadNotifCount}
-              </Badge>
-            )}
-          </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={currentUser?.profile_image_url || currentUser?.avatar} />
-                  <AvatarFallback className="text-xs">{currentUser?.name?.charAt(0)}</AvatarFallback>
-                </Avatar>
+              <Button variant="ghost" size="icon" className="relative h-10 w-10 rounded-xl hover:bg-secondary">
+                <MessageSquare className="h-5 w-5" />
+                {unreadMsgCount > 0 && (
+                  <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-destructive ring-2 ring-card" />
+                )}
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuLabel>
-                {currentUser?.name}
+            <DropdownMenuContent align="end" className="w-80">
+              <DropdownMenuLabel className="flex items-center justify-between">
+                <span>Messages</span>
+                {unreadMsgCount > 0 && (
+                  <Badge variant="secondary" className="rounded-full">
+                    {unreadMsgCount} unread
+                  </Badge>
+                )}
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => router.push('/profile')}>
-                <User className="h-4 w-4 mr-2" />
-                Profile
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => router.push('/profile')}>
-                <Settings className="h-4 w-4 mr-2" />
-                Settings
-              </DropdownMenuItem>
+              <div className="max-h-[400px] overflow-y-auto">
+                {unreadMsgs.length === 0 ? (
+                  <div className="p-4 text-sm text-muted-foreground">No unread messages</div>
+                ) : (
+                  unreadMsgs.map((msg) => (
+                    <DropdownMenuItem
+                      key={msg.id}
+                      className={`flex items-start gap-3 p-3 cursor-pointer ${!msg.read ? 'bg-primary/5' : ''
+                        }`}
+                      onClick={() => {
+                        try {
+                          if (msg.id) sessionStorage.setItem('messageUserId', String(msg.id));
+                          sessionStorage.setItem('messageUser', msg.user || '');
+                        } catch { }
+                        router.push('/messages');
+                      }}
+                    >
+                      <Avatar className="h-10 w-10 flex-shrink-0">
+                        <AvatarImage src={msg.avatar || "/placeholder.svg"} />
+                        <AvatarFallback>{String(msg.user || '').charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium">{msg.user}</p>
+                        <p className="text-xs text-muted-foreground line-clamp-2">{msg.message}</p>
+                        <p className="text-xs text-muted-foreground mt-1">{msg.time}</p>
+                      </div>
+                      {!msg.read && (
+                        <div className="h-2 w-2 rounded-full bg-primary flex-shrink-0 mt-1" />
+                      )}
+                    </DropdownMenuItem>
+                  ))
+                )}
+              </div>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => signOut()}>
-                <LogOut className="h-4 w-4 mr-2" />
-                Logout
+              <DropdownMenuItem asChild>
+                <Link href="/messages" className="flex items-center justify-center cursor-pointer font-medium text-primary">
+                  View all messages
+                </Link>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-        </div>
-      </div>
-    </header>
-  );
-}
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="relative h-10 w-10 rounded-xl hover:bg-accent/10 hover:text-accent">
+                <Bell className="h-5 w-5" />
+                {unreadNotifCount > 0 && (
+                  <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-destructive ring-2 ring-card" />
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-80">
+              <DropdownMenuLabel className="flex items-center justify-between">
+                <span>Notifications</span>
+                {unreadNotifCount > 0 && (
+                  <Badge variant="secondary" className="rounded-full">
+                    {unreadNotifCount} new
+                  </Badge>
+                )}
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <div className="max-h-[400px] overflow-y-auto">
+                {notificationsList.length === 0 ? (
+                  <div className="p-4 text-sm text-muted-foreground">No new notifications</div>
+                ) : (
+                  notificationsList.map((notif) => {
+                    const Icon = notif.icon ?? (notif.type === 'application' ? Briefcase : notif.type === 'message' ? MessageSquare : notif.type === 'connection' ? UserPlus : Bell);
+                    return (
+                      <DropdownMenuItem
+                        key={notif.id}
+                        className={`flex items-start gap-3 p-3 cursor-pointer ${!notif.read ? 'bg-primary/5' : ''
+                          }`}
+                        onClick={() => router.push('/notifications')}
+                      >
+                        <div className="mt-0.5">
+                          <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                            <Icon className="h-4 w-4 text-primary" />
+                          </div>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium">{notif.user}</p>
+                          <p className="text-xs text-muted-foreground line-clamp-2">{notif.message}</p>
+                          <p className="text-xs text-muted-foreground mt-1">{notif.time}</p>
+                        </div>
+                        {!notif.read && (
+                          <div className="h-2 w-2 rounded-full bg-primary flex-shrink-0 mt-1" />
+                        )}
+                      </DropdownMenuItem>
+                    );
+                  })
+                )}
+              </div>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link href="/notifications" className="flex items-center justify-center cursor-pointer font-medium text-primary">
+                  View all notifications
+                </Link>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <ThemeToggle />
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-9 w-9 rounded-full p-0">
+                <Avatar className="h-9 w-9 ring-2 ring-border hover:ring-primary/50 transition-all cursor-pointer">
+                  <AvatarImage src={currentUser?.profile_image_url || currentUser?.avatar || currentUser?.other_avatar || "/placeholder.svg"} />
+                  <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
+                    {(currentUser?.full_name || currentUser?.name || currentUser?.user?.full_name || 'U')?.charAt(0) || 'U'}
+                  </AvatarFallback>
+                </Avatar>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>
+                <div className="flex flex-col space-y-1">
+                  <p className="text-sm font-medium">{currentUser?.full_name || currentUser?.name || currentUser?.user?.full_name || 'Guest User'}</p>
+                  <p className="text-xs text-muted-foreground">{currentUser?.email || currentUser?.user?.email || 'No email'}</p>
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link href="/profile" className="flex items-center cursor-pointer">
+                  <User className="mr-2 h-4 w-4" />
+                  <span>View Profile</span>
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/settings" className="flex items-center cursor-pointer">
+                  <Settings className="mr-2 h-4 w-4" />
+                  <span>Settings</span>
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive cursor-pointer">
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Sign Out</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
