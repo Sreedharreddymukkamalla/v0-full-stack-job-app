@@ -1,6 +1,7 @@
 'use client';
 
 import React from "react"
+import Image from 'next/image'
 
 import { useState } from 'react';
 import { AvatarFallback } from "@/components/ui/avatar";
@@ -103,7 +104,18 @@ export function AppSidebar() {
   return (
     <Sidebar className="border-r border-sidebar-border bg-sidebar">
       <SidebarHeader className="h-16 flex items-center justify-between px-4 border-b border-sidebar-border">
-        {open && <span className="text-lg font-bold tracking-tight text-sidebar-foreground">AIMPLOY</span>}
+        {open && (
+          <div className="flex items-center gap-2">
+            <Image 
+              src="/logo.png" 
+              alt="AIMPLOY" 
+              width={32} 
+              height={32} 
+              className="w-8 h-8"
+            />
+            <span className="text-lg font-bold tracking-tight text-sidebar-foreground">AIMPLOY</span>
+          </div>
+        )}
         <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0" onClick={toggleSidebar}>
           <PanelLeftClose className="h-4 w-4" />
         </Button>

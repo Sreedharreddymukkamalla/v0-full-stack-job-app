@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Search as SearchIcon, Bell, Plus, Menu, User, Settings, LogOut, MessageSquare, UserPlus, Briefcase } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { SidebarTrigger } from '@/components/ui/sidebar';
+import { SidebarTrigger, useSidebar } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -24,6 +25,7 @@ import { ThemeToggle } from '@/components/theme-toggle';
 
 export function Header() {
   const [currentUser, setCurrentUser] = useState<any>(() => getProfile());
+  const { open } = useSidebar();
   const router = useRouter();
   const [recentMsgsState, setRecentMsgsState] = useState<any[]>([]);
   const [notificationsList, setNotificationsList] = useState<any[]>([]);
@@ -184,12 +186,26 @@ export function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-border bg-card/80 backdrop-blur-md">
-      <div className="flex h-16 items-center justify-between gap-4 px-4 md:px-6">
+    <header className="sticky top-0 z-40 w-screen border-b border-border bg-card/80 backdrop-blur-md h-[63px]">
+      <div className="flex h-[63px] items-center justify-between gap-4 px-4 md:px-6">
         <div className="flex items-center gap-3 flex-1">
           <SidebarTrigger className="md:hidden h-9 w-9">
             <Menu className="h-5 w-5" />
           </SidebarTrigger>
+
+          {/* Show logo and AIMPLOY text when sidebar is closed */}
+          {!open && (
+            <div className="hidden md:flex items-center gap-2">
+              <Image 
+                src="/logo.png" 
+                alt="AIMPLOY" 
+                width={32} 
+                height={32} 
+                className="w-8 h-8"
+              />
+              <span className="font-semibold text-lg text-foreground">AIMPLOY</span>
+            </div>
+          )}
 
           <div className="flex-1 max-w-lg hidden md:block">
             <div className="relative">
