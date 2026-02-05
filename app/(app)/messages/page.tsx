@@ -42,8 +42,6 @@ export default function MessagesPage() {
   const [selectedConversation, setSelectedConversation] = useState<number>(1);
   const [loading, setLoading] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
-  // track pending sends by content to avoid duplicate identical sends
-  const pendingContentRef = useRef<Set<string>>(new Set());
   const selectedConversationRef = useRef<number | null>(selectedConversation || null);
 
   // keep ref in sync for realtime handlers
@@ -381,8 +379,6 @@ export default function MessagesPage() {
   const handleSendMessage = () => {
     const content = messageInput.trim();
     if (!content || !selectedConversation) return;
-    // prevent duplicate identical sends while one is pending
-    if (pendingContentRef.current.has(content)) return;
 
     const tempId = `temp-${Date.now()}`;
     const optimistic = {
@@ -391,12 +387,9 @@ export default function MessagesPage() {
       content,
       timestamp: new Date().toLocaleString(),
       isUser: true,
-      pending: true,
     };
 
-    // mark as pending and render immediately
-    pendingContentRef.current.add(content);
-    setMessagesForChat((prev) => [...prev, optimistic]);
+    // render optimistic message immediately (no pending marker)
     setMessageInput('');
 
     const send = async () => {
@@ -417,10 +410,8 @@ export default function MessagesPage() {
         setMessagesForChat((prev) => prev.map((m) => (m.id === tempId ? mapped : m)));
       } catch (err) {
         console.error('[v0] Failed to send message', err);
-        // mark optimistic message as failed (remove pending flag)
-        setMessagesForChat((prev) => prev.map((m) => (m.id === tempId ? { ...m, pending: false, failed: true } : m)));
-      } finally {
-        pendingContentRef.current.delete(content);
+        // mark optimistic message as failed
+        setMessagesForChat((prev) => prev.map((m) => (m.id === tempId ? { ...m, failed: true } : m)));
       }
     };
     void send();
@@ -501,6 +492,19 @@ export default function MessagesPage() {
     setConversationList((prev) => prev.map((c) => (c.id === conversationId ? { ...c, unread: 0 } : c)));
   };
 
+  const markAllAsRead = async () => {
+    try {
+      const ids = conversationList.filter((c: any) => Number(c.unread) > 0).map((c: any) => c.id);
+      if (!ids.length) return;
+      await Promise.allSettled(
+        ids.map((id) => apiFetch(`/messages/conversations/${id}/read`, { method: 'POST' }).catch(() => {}))
+      );
+      setConversationList((prev) => prev.map((c) => ({ ...c, unread: 0 })));
+    } catch (err) {
+      console.error('[v0] Failed to mark all as read', err);
+    }
+  };
+
   const selectedChat = conversationList.find(c => c.id === selectedConversation);
   const isMuted = mutedConversations.has(selectedConversation);
 
@@ -517,20 +521,12 @@ export default function MessagesPage() {
                   <MoreVertical className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => console.log('[v0] Mark all as read')}>
-                  <CheckCheck className="h-4 w-4 mr-2" />
-                  Mark all as read
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => console.log('[v0] Settings')}>
-                  Settings
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => console.log('[v0] Archive all')}>
-                  <Archive className="h-4 w-4 mr-2" />
-                  Archive all
-                </DropdownMenuItem>
-              </DropdownMenuContent>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => void markAllAsRead()}>
+                    <CheckCheck className="h-4 w-4 mr-2" />
+                    Mark all as read
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
             </DropdownMenu>
           </div>
           <div className="relative">

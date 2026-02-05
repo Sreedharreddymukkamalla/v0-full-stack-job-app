@@ -142,3 +142,48 @@ export async function getUserNetwork(userId: number) {
     throw err;
   }
 }
+
+// Fetch applied jobs from the `applied_jobs` table
+export async function fetchAppliedJobs() {
+  if (!isSupabaseConfigured()) {
+    throw new Error('Supabase is not configured.');
+  }
+
+  const client = getSupabaseClient();
+  try {
+    const { data, error } = await client.from('applied_jobs').select('*').order('applied_date', { ascending: false });
+    if (error) {
+      throw error;
+    }
+    return data || [];
+  } catch (err) {
+    console.error('[v0] Error fetching applied jobs:', err);
+    throw err;
+  }
+}
+
+// Insert a new applied job row into `applied_jobs` table
+export async function insertAppliedJob(payload: {
+  company_name?: string | null;
+  resume_url?: string | null;
+  job_title?: string | null;
+  job_location?: string | null;
+  applied_date?: string | null; // ISO date string (YYYY-MM-DD)
+  job_url?: string | null;
+}) {
+  if (!isSupabaseConfigured()) {
+    throw new Error('Supabase is not configured.');
+  }
+
+  const client = getSupabaseClient();
+  try {
+    const { data, error } = await client.from('applied_jobs').insert([payload]).select().limit(1).single();
+    if (error) {
+      throw error;
+    }
+    return data;
+  } catch (err) {
+    console.error('[v0] Error inserting applied job:', err);
+    throw err;
+  }
+}

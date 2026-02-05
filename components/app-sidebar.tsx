@@ -48,6 +48,8 @@ import {
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { getCurrentUser, signOut } from '@/lib/auth';
+import { apiFetch } from '@/lib/api';
+import { toast } from 'sonner';
 
 const menuItems = [
   { icon: Home, label: 'Home', href: '/feed' },
@@ -79,11 +81,23 @@ export function AppSidebar() {
     return pathname === href || pathname.startsWith(href + '/');
   };
 
-  const handleReportSubmit = (e: React.FormEvent) => {
+  const handleReportSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('[v0] Issue report submitted:', reportForm);
-    setIsReportDialogOpen(false);
-    setReportForm({ title: '', description: '', type: 'bug' });
+    const reportMessage = `${reportForm.title}\n\n${reportForm.description}`.trim();
+    try {
+      await apiFetch('/issues', {
+        method: 'POST',
+        json: { message: reportMessage },
+      });
+      // themed toast feedback
+      toast.success('Thanks — your report has been submitted. We will review it shortly.');
+    } catch (err) {
+      console.error('[v0] Failed to submit issue report', err);
+      toast.error('Failed to submit report. Please try again later.');
+    } finally {
+      setIsReportDialogOpen(false);
+      setReportForm({ title: '', description: '', type: 'bug' });
+    }
   };
 
   return (

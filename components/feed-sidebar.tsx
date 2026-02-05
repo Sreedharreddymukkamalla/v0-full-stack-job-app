@@ -1,42 +1,52 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ChevronLeft, ChevronRight, Briefcase, MapPin, Clock, Users2, Pin } from 'lucide-react';
-import { MOCK_USERS } from '@/lib/mock-data';
-import { getCurrentUser } from '@/lib/auth';
-import { getHomePageData } from '@/app/(app)/feed/getHomePageData';
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Briefcase,
+  MapPin,
+  Clock,
+  Users2,
+  Pin,
+} from "lucide-react";
+import { getCurrentUser } from "@/lib/auth";
+import { getHomePageData } from "@/app/(app)/feed/getHomePageData";
 
 export function FeedSidebar() {
   const currentUser = getCurrentUser();
-  
+
   // Carousel state for jobs
   const [currentJobIndex, setCurrentJobIndex] = useState(0);
   const jobsPerPage = 3;
   const [jobs, setJobs] = useState<any[]>([]);
   const totalJobs = jobs.length;
   const latestJobs = jobs.slice(currentJobIndex, currentJobIndex + jobsPerPage);
-  
+
   // Get suggested people (exclude current user)
-  const [suggestedPeople, setSuggestedPeople] = useState(
-    MOCK_USERS.filter(user => user.id !== currentUser?.id).slice(0, 3)
-  );
+  const [suggestedPeople, setSuggestedPeople] = useState([]);
   const [removingPerson, setRemovingPerson] = useState<string | null>(null);
 
   // Auto-rotate carousel
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentJobIndex((prev) => (prev + jobsPerPage >= totalJobs ? 0 : prev + jobsPerPage));
+      setCurrentJobIndex((prev) =>
+        prev + jobsPerPage >= totalJobs ? 0 : prev + jobsPerPage,
+      );
     }, 5000); // Rotate every 5 seconds
-    
+
     return () => clearInterval(interval);
   }, [totalJobs]);
-  
+
   // Get current jobs to display
-  const currentJobs = jobs.slice(currentJobIndex, currentJobIndex + jobsPerPage);
+  const currentJobs = jobs.slice(
+    currentJobIndex,
+    currentJobIndex + jobsPerPage,
+  );
 
   // Fetch latest jobs and suggestions from RPC
   useEffect(() => {
@@ -47,26 +57,34 @@ export function FeedSidebar() {
         const data = await getHomePageData();
         if (!mounted) return;
 
-        if (data?.latest_jobs && Array.isArray(data.latest_jobs) && data.latest_jobs.length > 0) {
+        if (
+          data?.latest_jobs &&
+          Array.isArray(data.latest_jobs) &&
+          data.latest_jobs.length > 0
+        ) {
           // Map RPC job shape to what the UI expects
           const mapped = data.latest_jobs.map((j: any) => ({
             id: j.id?.toString() || String(Math.random()),
-            title: j.title || j.job_title || 'Job',
-            company: j.company_name || j.company || 'Company',
-            location: j.location || 'Remote',
+            title: j.title || j.job_title || "Job",
+            company: j.company_name || j.company || "Company",
+            location: j.location || "Remote",
             posted_at: j.posted_at || new Date().toISOString(),
             url: j.url,
           }));
           setJobs(mapped);
         }
 
-        if (data?.suggestions && Array.isArray(data.suggestions) && data.suggestions.length > 0) {
+        if (
+          data?.suggestions &&
+          Array.isArray(data.suggestions) &&
+          data.suggestions.length > 0
+        ) {
           const people = data.suggestions
             .map((s: any) => ({
-              id: (s.id != null) ? s.id.toString() : String(Math.random()),
-              name: s.name || s.full_name || '',
-              avatar: s.avatar || s.avatar_url || '/placeholder.svg',
-              title: s.headline || s.title || '',
+              id: s.id != null ? s.id.toString() : String(Math.random()),
+              name: s.name || s.full_name || "",
+              avatar: s.avatar || s.avatar_url || "/placeholder.svg",
+              title: s.headline || s.title || "",
             }))
             .filter((p: any) => p.id !== currentUser?.id)
             .slice(0, 3);
@@ -74,31 +92,42 @@ export function FeedSidebar() {
           if (people.length > 0) setSuggestedPeople(people as any);
         }
       } catch (err) {
-        console.warn('[v0] FeedSidebar: could not load latest jobs/suggestions', err);
+        console.warn(
+          "[v0] FeedSidebar: could not load latest jobs/suggestions",
+          err,
+        );
       }
     };
 
     load();
 
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, [currentUser?.id]);
-  
+
   // Carousel navigation
   const goToPrevious = () => {
-    setCurrentJobIndex((prev) => (prev - jobsPerPage < 0 ? Math.max(0, totalJobs - jobsPerPage) : prev - jobsPerPage));
+    setCurrentJobIndex((prev) =>
+      prev - jobsPerPage < 0
+        ? Math.max(0, totalJobs - jobsPerPage)
+        : prev - jobsPerPage,
+    );
   };
-  
+
   const goToNext = () => {
-    setCurrentJobIndex((prev) => (prev + jobsPerPage >= totalJobs ? 0 : prev + jobsPerPage));
+    setCurrentJobIndex((prev) =>
+      prev + jobsPerPage >= totalJobs ? 0 : prev + jobsPerPage,
+    );
   };
-  
+
   // Handle connect click
   const handleConnect = (personId: string) => {
     setRemovingPerson(personId);
-    
+
     // Remove person after animation completes
     setTimeout(() => {
-      setSuggestedPeople(prev => prev.filter(p => p.id !== personId));
+      setSuggestedPeople((prev) => prev.filter((p) => p.id !== personId));
       setRemovingPerson(null);
     }, 300); // Match animation duration
   };
@@ -106,12 +135,14 @@ export function FeedSidebar() {
   const formatTimeAgo = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
-    const diffHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
-    
-    if (diffHours < 1) return 'just now';
+    const diffHours = Math.floor(
+      (now.getTime() - date.getTime()) / (1000 * 60 * 60),
+    );
+
+    if (diffHours < 1) return "just now";
     if (diffHours < 24) return `${diffHours}h ago`;
     const diffDays = Math.floor(diffHours / 24);
-    if (diffDays === 1) return '1d ago';
+    if (diffDays === 1) return "1d ago";
     return `${diffDays}d ago`;
   };
 
@@ -124,17 +155,16 @@ export function FeedSidebar() {
             <Pin className="h-5 w-5 text-foreground" />
             <h2 className="font-bold text-lg text-foreground">Latest Jobs</h2>
           </div>
-          
         </div>
 
         <div className="space-y-4 transition-all duration-500">
           {currentJobs.map((job) => {
             // Extract company initial for logo
             const companyInitial = job.company.charAt(0).toUpperCase();
-            
+
             return (
-              <Link 
-                key={job.id} 
+              <Link
+                key={job.id}
                 href={`/jobs/${job.id}`}
                 className="block group"
               >
@@ -169,23 +199,23 @@ export function FeedSidebar() {
         </div>
 
         <div className="flex items-center justify-between mt-5 pt-4 border-t border-border/50">
-          <Button 
-            variant="ghost" 
-            size="icon" 
+          <Button
+            variant="ghost"
+            size="icon"
             className="h-8 w-8 rounded-lg hover:bg-secondary"
             onClick={goToPrevious}
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <Link 
-            href="/jobs" 
+          <Link
+            href="/jobs"
             className="text-sm font-semibold text-foreground hover:text-primary transition-colors"
           >
             View all jobs
           </Link>
-          <Button 
-            variant="ghost" 
-            size="icon" 
+          <Button
+            variant="ghost"
+            size="icon"
             className="h-8 w-8 rounded-lg hover:bg-secondary"
             onClick={goToNext}
           >
@@ -198,17 +228,19 @@ export function FeedSidebar() {
       <Card className="p-5 shadow-sm border-border/50">
         <div className="flex items-center gap-2 mb-5">
           <Users2 className="h-5 w-5 text-foreground" />
-          <h2 className="font-bold text-lg text-foreground">People You May Know</h2>
+          <h2 className="font-bold text-lg text-foreground">
+            People You May Know
+          </h2>
         </div>
 
         <div className="space-y-4">
           {suggestedPeople.map((person) => (
-            <div 
-              key={person.id} 
+            <div
+              key={person.id}
               className={`flex items-center gap-3 transition-all duration-300 ${
-                removingPerson === person.id 
-                  ? 'opacity-0 translate-x-full' 
-                  : 'opacity-100 translate-x-0'
+                removingPerson === person.id
+                  ? "opacity-0 translate-x-full"
+                  : "opacity-100 translate-x-0"
               }`}
             >
               <Link href={`/users/${person.id}`}>
@@ -220,7 +252,7 @@ export function FeedSidebar() {
                 </Avatar>
               </Link>
               <div className="flex-1 min-w-0">
-                <Link 
+                <Link
                   href={`/users/${person.id}`}
                   className="font-semibold text-sm text-foreground hover:text-primary transition-colors line-clamp-1 block"
                 >
@@ -230,8 +262,8 @@ export function FeedSidebar() {
                   {person.title}
                 </p>
               </div>
-              <Button 
-                size="sm" 
+              <Button
+                size="sm"
                 variant="outline"
                 className="h-8 px-3 text-xs font-semibold rounded-lg bg-transparent hover:bg-primary hover:text-primary-foreground transition-colors"
                 onClick={() => handleConnect(person.id)}
@@ -243,8 +275,8 @@ export function FeedSidebar() {
         </div>
 
         <Link href="/users">
-          <Button 
-            variant="ghost" 
+          <Button
+            variant="ghost"
             className="w-full mt-4 text-sm font-semibold hover:bg-secondary"
           >
             See all recommendations

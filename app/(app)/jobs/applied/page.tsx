@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -21,52 +21,22 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Building, MapPin, Clock, ExternalLink, Plus, Upload } from 'lucide-react';
+import { Building, MapPin, Clock, ExternalLink, Plus, Upload, Download } from 'lucide-react';
+import Link from 'next/link';
+import { fetchAppliedJobs, insertAppliedJob } from '@/lib/supabase';
+import { uploadFile } from '@/lib/api';
 
 type ApplicationStatus = 'under_review' | 'interview' | 'rejected' | 'accepted';
 
-const applications = [
-  {
-    id: 1,
-    jobTitle: 'Senior Frontend Engineer',
-    company: 'Vercel',
-    location: 'Remote',
-    appliedDate: '2024-01-15',
-    status: 'under_review' as ApplicationStatus,
-    logo: 'V',
-    jobUrl: '#',
-  },
-  {
-    id: 2,
-    jobTitle: 'Full Stack Developer',
-    company: 'Stripe',
-    location: 'San Francisco, CA',
-    appliedDate: '2024-01-12',
-    status: 'interview' as ApplicationStatus,
-    logo: 'S',
-    jobUrl: '#',
-  },
-  {
-    id: 3,
-    jobTitle: 'React Developer',
-    company: 'Meta',
-    location: 'Menlo Park, CA',
-    appliedDate: '2024-01-10',
-    status: 'rejected' as ApplicationStatus,
-    logo: 'M',
-    jobUrl: '#',
-  },
-  {
-    id: 4,
-    jobTitle: 'Software Engineer',
-    company: 'Google',
-    location: 'Mountain View, CA',
-    appliedDate: '2024-01-08',
-    status: 'accepted' as ApplicationStatus,
-    logo: 'G',
-    jobUrl: '#',
-  },
-];
+type AppliedJob = {
+  id: number;
+  company_name?: string | null;
+  resume_url?: string | null;
+  job_title?: string | null;
+  job_location?: string | null;
+  applied_date?: string | null;
+  job_url?: string | null;
+};
 
 const statusConfig = {
   under_review: { label: 'Under Review', color: 'bg-blue-500/10 text-blue-700 dark:text-blue-400' },
@@ -76,10 +46,11 @@ const statusConfig = {
 };
 
 export default function JobsAppliedPage() {
-  const [applicationStatuses, setApplicationStatuses] = useState<Record<number, ApplicationStatus>>(
-    applications.reduce((acc, app) => ({ ...acc, [app.id]: app.status }), {})
-  );
+  const [applications, setApplications] = useState<AppliedJob[]>([]);
+  const [applicationStatuses, setApplicationStatuses] = useState<Record<number, ApplicationStatus>>({});
   const [isAddJobOpen, setIsAddJobOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
   const [newJob, setNewJob] = useState({
     jobTitle: '',
     company: '',
@@ -92,17 +63,68 @@ export default function JobsAppliedPage() {
     setApplicationStatuses(prev => ({ ...prev, [appId]: newStatus }));
   };
 
-  const handleAddJob = () => {
-    console.log('[v0] Adding job:', newJob);
-    setIsAddJobOpen(false);
-    setNewJob({
-      jobTitle: '',
-      company: '',
-      location: '',
-      jobUrl: '',
-      resume: null,
-    });
+  const handleAddJob = async () => {
+    try {
+      let resumeUrl: string | null = null;
+      if (newJob.resume) {
+        resumeUrl = await uploadFile(newJob.resume);
+      }
+
+      const payload = {
+        company_name: newJob.company || null,
+        job_title: newJob.jobTitle || null,
+        job_location: newJob.location || null,
+        job_url: newJob.jobUrl || null,
+        resume_url: resumeUrl,
+        applied_date: new Date().toISOString().slice(0, 10),
+      };
+
+      await insertAppliedJob(payload);
+      // Refresh list
+      const rows = await fetchAppliedJobs();
+      setApplications(rows as AppliedJob[]);
+
+      setIsAddJobOpen(false);
+      setNewJob({ jobTitle: '', company: '', location: '', jobUrl: '', resume: null });
+    } catch (err) {
+      console.error('[v0] Error adding job:', err);
+      setIsAddJobOpen(false);
+    }
   };
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const rows = await fetchAppliedJobs();
+        if (!mounted) return;
+        setApplications(rows as AppliedJob[]);
+        // initialize statuses
+        const statusMap: Record<number, ApplicationStatus> = {};
+        (rows || []).forEach((r: any) => {
+          statusMap[r.id] = 'under_review';
+        });
+        setApplicationStatuses(statusMap);
+      } catch (err) {
+        console.error('[v0] Error loading applied jobs:', err);
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
+
+  // Filter and sort applications based on search and sortOrder
+  const displayedApplications = (applications || [])
+    .filter((app) => {
+      if (!searchQuery) return true;
+      return (app.company_name || '').toLowerCase().includes(searchQuery.toLowerCase());
+    })
+    .slice()
+    .sort((a, b) => {
+      const da = a.applied_date || '';
+      const db = b.applied_date || '';
+      if (sortOrder === 'newest') return db.localeCompare(da);
+      return da.localeCompare(db);
+    });
 
   return (
     <div className="min-h-screen bg-secondary/20">
@@ -209,18 +231,47 @@ export default function JobsAppliedPage() {
             </DialogContent>
           </Dialog>
         </div>
+        {/* Search & Sort */}
+        <div className="mb-4 flex items-center gap-3">
+          <Input
+            placeholder="Search by company"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="min-w-[220px] flex-1"
+          />
+
+          <div className="ml-auto flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Sort By</span>
+            <Select value={sortOrder} onValueChange={(v) => setSortOrder(v as 'newest' | 'oldest')}>
+              <SelectTrigger className="w-[160px] h-9 border-0">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="newest">Newest</SelectItem>
+                <SelectItem value="oldest">Oldest</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
 
         <div className="space-y-4">
-          {applications.map((app) => {
-            const currentStatus = applicationStatuses[app.id];
+          {displayedApplications.map((app) => {
+            const currentStatus = applicationStatuses[app.id] || 'under_review';
             const status = statusConfig[currentStatus];
-            
+
+            const companyLabel = (app.company_name || '').trim() || '?';
+            const displayTitle = app.job_title || '—';
+            const displayLocation = app.job_location || '—';
+            const appliedDate = app.applied_date ? new Date(app.applied_date).toLocaleDateString('en-US', {
+              month: 'long', day: 'numeric', year: 'numeric'
+            }) : 'Unknown';
+
             return (
               <Card key={app.id} className="p-6 hover:shadow-md transition-shadow">
                 <div className="flex items-start gap-4">
                   {/* Company Logo */}
                   <div className="h-14 w-14 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <span className="text-xl font-bold text-primary">{app.logo}</span>
+                    <span className="text-xl font-bold text-primary">{companyLabel.charAt(0).toUpperCase()}</span>
                   </div>
 
                   {/* Job Details */}
@@ -228,16 +279,16 @@ export default function JobsAppliedPage() {
                     <div className="flex items-start justify-between gap-4 mb-2">
                       <div className="flex-1">
                         <h3 className="text-lg font-semibold text-foreground mb-1">
-                          {app.jobTitle}
+                          {displayTitle}
                         </h3>
                         <div className="flex items-center gap-3 text-sm text-muted-foreground">
                           <div className="flex items-center gap-1">
                             <Building className="h-3.5 w-3.5" />
-                            <span>{app.company}</span>
+                            <span>{app.company_name}</span>
                           </div>
                           <div className="flex items-center gap-1">
                             <MapPin className="h-3.5 w-3.5" />
-                            <span>{app.location}</span>
+                            <span>{displayLocation}</span>
                           </div>
                         </div>
                       </div>
@@ -246,11 +297,7 @@ export default function JobsAppliedPage() {
                     {/* Applied Date */}
                     <div className="flex items-center gap-1 text-xs text-muted-foreground mb-4">
                       <Clock className="h-3 w-3" />
-                      <span>Applied on {new Date(app.appliedDate).toLocaleDateString('en-US', { 
-                        month: 'long', 
-                        day: 'numeric', 
-                        year: 'numeric' 
-                      })}</span>
+                      <span>Applied on {appliedDate}</span>
                     </div>
 
                     {/* Actions and Status */}
@@ -261,11 +308,25 @@ export default function JobsAppliedPage() {
                         className="bg-transparent"
                         asChild
                       >
-                        <a href={app.jobUrl} target="_blank" rel="noopener noreferrer">
+                        <a href={app.job_url || '#'} target="_blank" rel="noopener noreferrer">
                           <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
                           View Job
                         </a>
                       </Button>
+
+                      {app.resume_url && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="bg-transparent"
+                          asChild
+                        >
+                          <a href={app.resume_url} target="_blank" rel="noopener noreferrer">
+                            <Download className="h-3.5 w-3.5 mr-1.5" />
+                            View Resume
+                          </a>
+                        </Button>
+                      )}
 
                       {/* Status Dropdown */}
                       <Select 
@@ -323,7 +384,9 @@ export default function JobsAppliedPage() {
               <p className="text-muted-foreground mb-6">
                 Start applying to jobs and track your applications here
               </p>
-              <Button>Browse Jobs</Button>
+              <Button asChild>
+                <Link href="/jobs">Browse Jobs</Link>
+              </Button>
             </div>
           </Card>
         )}

@@ -147,7 +147,7 @@ export function Header() {
               const idx = prev.findIndex((p) => Number(p.id) === convId);
               const updatedItem = {
                 id: convId,
-                user: prev[idx]?.user || `Conversation ${convId}`,
+                user: newRow.sender_id || `Conversation ${convId}`,
                 avatar: prev[idx]?.avatar || '/placeholder.svg',
                 message: newRow.content,
                 time: newRow.created_at ? new Date(newRow.created_at).toLocaleString() : '',
