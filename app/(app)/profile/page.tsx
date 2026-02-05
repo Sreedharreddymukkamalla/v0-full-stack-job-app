@@ -17,6 +17,8 @@ export default function ProfilePage() {
   
   // State for section-wise editing
   const [editingSection, setEditingSection] = useState<string | null>(null);
+  
+  const [profileData, setProfileData] = useState<any>({
     name: '',
     title: '',
     location: '',
