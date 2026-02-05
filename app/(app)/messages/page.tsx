@@ -62,16 +62,25 @@ export default function MessagesPage() {
 
         // Normalize RPC data to expected UI shape
         if (data && Array.isArray(data)) {
-          const mapped = data.map((c: any) => ({
-            id: c.id,
-            name: c.name || c.other_name || c.user?.name || c.display_name || '',
-            role: c.role || c.title || c.user?.title || c.role_description || c.position || '',
-            avatar: c.avatar || c.user?.avatar || c.avatar_url || '/placeholder.svg',
-            lastMessage: c.last_message || c.lastMessage || c.preview || c.snippet || '',
-            timestamp: c.timestamp || c.last_seen_at || c.updated_at || c.time || '',
-            unread: Boolean(c.unread || c.unread_count || c.unreadMessages),
-            online: Boolean(c.online || c.is_online || c.user?.online),
-          }));
+          const mapped = data.map((c: any) => {
+            const rawLast = c.last_message ?? c.lastMessage ?? c.preview ?? c.snippet ?? '';
+            const lastMessage =
+              typeof rawLast === 'string'
+                ? rawLast
+                : rawLast?.content ?? rawLast?.message ?? String(rawLast ?? '');
+            const rawTs = c.timestamp ?? c.last_seen_at ?? c.updated_at ?? c.time ?? '';
+            const timestamp = typeof rawTs === 'string' ? rawTs : rawTs?.created_at ?? String(rawTs ?? '');
+            return {
+              id: c.id,
+              name: c.name || c.other_name || c.user?.name || c.display_name || '',
+              role: c.role || c.title || c.user?.title || c.role_description || c.position || '',
+              avatar: c.avatar || c.user?.avatar || c.avatar_url || '/placeholder.svg',
+              lastMessage,
+              timestamp,
+              unread: Boolean(c.unread || c.unread_count || c.unreadMessages),
+              online: Boolean(c.online || c.is_online || c.user?.online),
+            };
+          });
           setConversationList(mapped);
         }
       } catch (error) {
