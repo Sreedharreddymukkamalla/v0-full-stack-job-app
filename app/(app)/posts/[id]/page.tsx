@@ -258,7 +258,7 @@ export default function PostDetailPage() {
                 Copy link to post
               </DropdownMenuItem>
               <DropdownMenuItem>Save post</DropdownMenuItem>
-              <DropdownMenuItem className="text-destructive">
+              <DropdownMenuItem className="text-destructive focus:text-destructive cursor-pointer">
                 Report post
               </DropdownMenuItem>
             </DropdownMenuContent>

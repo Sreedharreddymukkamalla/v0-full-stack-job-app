@@ -422,7 +422,7 @@ export default function FeedPage() {
                             </DropdownMenuItem>
                           )}
                           {post.author_id !== currentUser?.id && (
-                            <DropdownMenuItem className="cursor-pointer">
+                            <DropdownMenuItem className="cursor-pointer text-destructive focus:text-destructive">
                               Report post
                             </DropdownMenuItem>
                           )}

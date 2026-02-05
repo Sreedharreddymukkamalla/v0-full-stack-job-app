@@ -29,9 +29,16 @@ export function Header() {
   const router = useRouter();
   const [recentMsgsState, setRecentMsgsState] = useState<any[]>([]);
   const [notificationsList, setNotificationsList] = useState<any[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const unreadNotifCount = notificationsList.filter(n => !n.read).length;
   const unreadMsgCount = recentMsgsState.filter(m => !m.read).length;
   const unreadMsgs = recentMsgsState.filter((m) => !m.read);
+
+  const handleSearch = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && searchQuery.trim()) {
+      router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+    }
+  };
 
   useEffect(() => {
     if (!currentUser) {
@@ -187,31 +194,34 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-40 w-screen border-b border-border bg-card/80 backdrop-blur-md h-[63px]">
-      <div className="flex h-[63px] items-center justify-between gap-4 px-4 md:px-6">
+      <div className="relative flex h-[63px] items-center justify-between gap-4 px-4 md:px-6">
         <div className="flex items-center gap-3 flex-1">
           <SidebarTrigger className="md:hidden h-9 w-9">
             <Menu className="h-5 w-5" />
           </SidebarTrigger>
 
-          {/* Show logo and AIMPLOY text when sidebar is closed */}
-          {!open && (
-            <div className="hidden md:flex items-center gap-2">
-              <Image 
-                src="/logo.png" 
-                alt="AIMPLOY" 
-                width={32} 
-                height={32} 
-                className="w-8 h-8"
-              />
+          {/* Show logo always in header; show text only when sidebar is closed */}
+          <div className="flex items-center gap-2">
+            <Image
+              src="/logo.png"
+              alt="AIMPLOY"
+              width={32}
+              height={32}
+              className="w-8 h-8"
+            />
+            {!open && (
               <span className="font-semibold text-lg text-foreground">AIMPLOY</span>
-            </div>
-          )}
+            )}
+          </div>
 
-          <div className="flex-1 max-w-lg hidden md:block">
+          <div className="hidden md:block absolute left-1/2 transform -translate-x-1/2 w-full max-w-lg">
             <div className="relative">
               <SearchIcon className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Search jobs, people, companies..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={handleSearch}
                 className="pl-10 h-10 bg-secondary/50 border-0 rounded-xl focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-background transition-all"
               />
             </div>

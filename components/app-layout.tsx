@@ -11,15 +11,15 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Ensure profile store is populated on client-side mount so reloads
     // don't lose the in-memory profile.
-    loadProfileFromApi().catch(() => {});
+    loadProfileFromApi().catch(() => { });
   }, []);
 
   return (
     <SidebarProvider>
-      <div className="flex h-screen w-full overflow-hidden bg-background">
-        <AppSidebar />
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <Header />
+      <div className="flex flex-col h-screen w-full overflow-hidden bg-background">
+        <Header />
+        <div className="flex-1 flex overflow-hidden">
+          <AppSidebar />
           <main className="flex-1 overflow-auto bg-secondary/20">
             {children}
           </main>
