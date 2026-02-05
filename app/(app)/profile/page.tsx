@@ -541,11 +541,11 @@ export default function ProfilePage() {
                           { id: newId, degree: '', school: '', year: '' }
                         ]);
                       }}
-                    className="bg-transparent gap-2 h-8"
-                  >
-                    <Plus className="h-3 w-3" />
-                    Add Education
-                  </Button>
+                      className="bg-transparent gap-2 h-8"
+                    >
+                      <Plus className="h-3 w-3" />
+                      Add Education
+                    </Button>
                     <Button 
                       variant="outline" 
                       size="sm"
