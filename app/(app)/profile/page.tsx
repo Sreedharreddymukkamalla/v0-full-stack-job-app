@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Edit3, Check, X, Camera, ThumbsUp, MessageCircle, Share2, Plus } from 'lucide-react';
+import { Edit3, Check, X, Camera, ThumbsUp, MessageCircle, Share2, Plus, Pencil, Trash2 } from 'lucide-react';
 import { getProfile, loadProfileFromApi } from '@/lib/profileStore';
 import { formatTimeAgo } from '@/lib/utils'; // Assuming formatTimeAgo is declared in utils.js
 
@@ -132,7 +132,19 @@ export default function ProfilePage() {
         {/* Profile Header */}
         <Card className="overflow-hidden mb-6 relative">
           {/* Banner */}
-          <div className="h-56 bg-gradient-to-r from-primary via-accent to-primary bg-[length:200%_100%] animate-gradient relative">
+          <div className="h-56 bg-gradient-to-r from-primary via-accent to-primary bg-[length:200%_100%] animate-gradient relative group">
+            {/* Edit Cover Photo Button */}
+            {isSelfProfile && !isEditMode && (
+              <Button
+                size="sm"
+                variant="secondary"
+                className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity gap-2"
+                onClick={() => document.getElementById('cover-upload')?.click()}
+              >
+                <Camera className="h-4 w-4" />
+                Edit Cover
+              </Button>
+            )}
             {isEditMode && (
               <Input
                 type="file"
@@ -147,42 +159,77 @@ export default function ProfilePage() {
                 }}
               />
             )}
-          </div>
+            {!isEditMode && (
+              <Input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                id="cover-upload"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    console.log('[v0] Cover photo selected:', file.name);
+                  }
+                }}
+              />
+            )}
 
           {/* Profile Info */}
           <div className="px-6 pb-6">
             <div className="flex flex-col md:flex-row md:items-start md:justify-between -mt-20 relative z-10 mb-6">
               <div className="flex flex-col md:flex-row items-start gap-4">
-                <div className="relative">
-                  <Avatar className="h-36 w-36 border-4 border-card ring-4 ring-background shadow-xl">
-                    <AvatarImage src={currentProfile?.profile_image_url || currentProfile?.profile_image || currentProfile?.avatar || "/placeholder.svg"} />
-                    <AvatarFallback>{(formData.name || 'U').charAt(0)}</AvatarFallback>
-                  </Avatar>
-                  {isEditMode && (
-                    <>
-                      <Input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        id="avatar-upload"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            console.log('[v0] Profile photo selected:', file.name);
-                          }
-                        }}
-                      />
-                      <Button
-                        size="icon"
-                        variant="secondary"
-                        className="absolute bottom-0 right-0 h-8 w-8 rounded-full shadow-md"
-                        onClick={() => document.getElementById('avatar-upload')?.click()}
-                      >
-                        <Camera className="h-4 w-4" />
-                      </Button>
-                    </>
-                  )}
-                </div>
+              <div className="relative">
+                <Avatar className="h-36 w-36 border-4 border-card ring-4 ring-background shadow-xl group">
+                  <AvatarImage src={currentProfile?.profile_image_url || currentProfile?.profile_image || currentProfile?.avatar || "/placeholder.svg"} />
+                  <AvatarFallback>{(formData.name || 'U').charAt(0)}</AvatarFallback>
+                </Avatar>
+                {isSelfProfile && !isEditMode && (
+                  <Button
+                    size="icon"
+                    variant="secondary"
+                    className="absolute bottom-0 right-0 h-10 w-10 rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={() => document.getElementById('avatar-upload-direct')?.click()}
+                  >
+                    <Camera className="h-5 w-5" />
+                  </Button>
+                )}
+                <Input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  id="avatar-upload-direct"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      console.log('[v0] Profile photo selected:', file.name);
+                    }
+                  }}
+                />
+                {isEditMode && (
+                  <>
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      id="avatar-upload"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          console.log('[v0] Profile photo selected:', file.name);
+                        }
+                      }}
+                    />
+                    <Button
+                      size="icon"
+                      variant="secondary"
+                      className="absolute bottom-0 right-0 h-8 w-8 rounded-full shadow-md"
+                      onClick={() => document.getElementById('avatar-upload')?.click()}
+                    >
+                      <Camera className="h-4 w-4" />
+                    </Button>
+                  </>
+                )}
+              </div>
                 <div className="mt-2">
                       {isEditMode ? (
                     <div className="space-y-2">
@@ -287,6 +334,30 @@ export default function ProfilePage() {
             <div className="mb-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-semibold text-foreground">Experience</h3>
+                {isSelfProfile && !isEditMode && (
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setIsEditMode(true)}
+                      className="bg-transparent gap-2 h-8"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Add
+                    </Button>
+                    {formData.experiences.length > 0 && (
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setIsEditMode(true)}
+                        className="bg-transparent gap-2 h-8"
+                      >
+                        <Pencil className="h-4 w-4" />
+                        Edit
+                      </Button>
+                    )}
+                  </div>
+                )}
                 {isEditMode && (
                   <Button 
                     variant="outline" 
@@ -378,6 +449,30 @@ export default function ProfilePage() {
             <div className="mb-6">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-semibold text-foreground">Education</h3>
+                {isSelfProfile && !isEditMode && (
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsEditMode(true)}
+                      className="bg-transparent gap-2 h-8"
+                    >
+                      <Plus className="h-3 w-3" />
+                      Add
+                    </Button>
+                    {formData.education.length > 0 && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsEditMode(true)}
+                        className="bg-transparent gap-2 h-8"
+                      >
+                        <Pencil className="h-4 w-4" />
+                        Edit
+                      </Button>
+                    )}
+                  </div>
+                )}
                 {isEditMode && (
                   <Button
                     variant="outline"

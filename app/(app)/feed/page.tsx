@@ -37,6 +37,7 @@ import {
 import { getCurrentUser } from "@/lib/auth";
 import { FeedSidebar } from "@/components/feed-sidebar";
 import { getHomePageData } from "../feed/getHomePageData";
+import { getProfile } from "@/lib/profileStore";
 
 interface Post {
   id: string;
@@ -72,7 +73,7 @@ export default function FeedPage() {
     type: "image" | "video";
     url: string;
   } | null>(null);
-  const currentUser = getCurrentUser();
+  const currentUser = getProfile();
   const [users, setUsers] = useState<Map<string, User>>(new Map());
   const [loading, setLoading] = useState(true);
 
@@ -139,8 +140,8 @@ export default function FeedPage() {
           });
           setLikedPosts(initialLiked);
 
-      }
-     } catch (error) {
+        }
+      } catch (error) {
         console.error("[v0] Error fetching feed data:", error);
       } finally {
         setLoading(false);
@@ -252,7 +253,7 @@ export default function FeedPage() {
           <Card className="p-5 shadow-sm border-border/50">
             <div className="flex gap-4">
               <Avatar className="h-11 w-11 ring-2 ring-primary/10">
-                <AvatarImage src={currentUser?.avatar || "/placeholder.svg"} />
+                <AvatarImage src={currentUser?.profile_image_url || "/placeholder.svg"} />
                 <AvatarFallback className="bg-primary/10 text-primary font-semibold">
                   {currentUser?.name?.charAt(0) || "U"}
                 </AvatarFallback>
@@ -466,11 +467,10 @@ export default function FeedPage() {
                         variant="ghost"
                         size="sm"
                         onClick={() => toggleLike(post.id)}
-                        className={`flex-1 h-10 rounded-lg gap-2 font-medium transition-colors ${
-                          isLiked
+                        className={`flex-1 h-10 rounded-lg gap-2 font-medium transition-colors ${isLiked
                             ? "text-primary hover:text-primary/80 hover:bg-primary/10"
                             : "text-muted-foreground hover:text-primary hover:bg-primary/5"
-                        }`}
+                          }`}
                       >
                         <ThumbsUp
                           className={`h-[18px] w-[18px] ${isLiked ? "fill-current" : ""}`}
@@ -518,11 +518,10 @@ export default function FeedPage() {
                         variant="ghost"
                         size="icon"
                         onClick={() => toggleSave(post.id)}
-                        className={`h-10 w-10 rounded-lg transition-colors ${
-                          isSaved
+                        className={`h-10 w-10 rounded-lg transition-colors ${isSaved
                             ? "text-primary hover:text-primary hover:bg-transparent"
                             : "text-muted-foreground hover:text-primary hover:bg-primary/5"
-                        }`}
+                          }`}
                       >
                         <Bookmark
                           className={`h-[18px] w-[18px] ${isSaved ? "fill-current" : ""}`}

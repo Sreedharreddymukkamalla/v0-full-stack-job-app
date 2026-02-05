@@ -83,7 +83,7 @@ export function FeedSidebar() {
             .map((s: any) => ({
               id: s.id != null ? s.id.toString() : String(Math.random()),
               name: s.name || s.full_name || "",
-              avatar: s.avatar || s.avatar_url || "/placeholder.svg",
+              avatar: s.avatar || s.profile_image_url || "/placeholder.svg",
               title: s.headline || s.title || "",
             }))
             .filter((p: any) => p.id !== currentUser?.id)
@@ -237,11 +237,10 @@ export function FeedSidebar() {
           {suggestedPeople.map((person) => (
             <div
               key={person.id}
-              className={`flex items-center gap-3 transition-all duration-300 ${
-                removingPerson === person.id
+              className={`flex items-center gap-3 transition-all duration-300 ${removingPerson === person.id
                   ? "opacity-0 translate-x-full"
                   : "opacity-100 translate-x-0"
-              }`}
+                }`}
             >
               <Link href={`/users/${person.id}`}>
                 <Avatar className="h-11 w-11 ring-2 ring-border hover:ring-primary/50 transition-all cursor-pointer">
