@@ -470,11 +470,11 @@ export default function ProfilePage() {
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      const newId = Math.max(...educationData.map((e: any) => e.id), 0) + 1;
+                      const newId = educationData.length > 0 ? Math.max(...educationData.map((e: any) => e.id)) + 1 : 1;
                       setEducationData([
                         ...educationData,
                         { id: newId, degree: '', school: '', year: '' }
-                      });
+                      ]);
                     }}
                     className="bg-transparent gap-2 h-8"
                   >
