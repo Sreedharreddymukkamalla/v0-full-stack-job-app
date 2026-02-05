@@ -19,70 +19,17 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { signOut } from '@/lib/auth';
 import { getProfile, loadProfileFromApi, clearProfile } from '@/lib/profileStore';
+import { getUserConversations, getSupabaseClient } from '@/lib/supabase';
 import { ThemeToggle } from '@/components/theme-toggle';
-
-const recentNotifications = [
-  {
-    id: 1,
-    type: 'application',
-    user: 'Stripe',
-    message: 'Your application has moved to the next round',
-    time: '2h ago',
-    read: false,
-    icon: Briefcase,
-  },
-  {
-    id: 2,
-    type: 'message',
-    user: 'Sarah Chen',
-    message: 'Sent you a message',
-    time: '4h ago',
-    read: false,
-    icon: MessageSquare,
-  },
-  {
-    id: 3,
-    type: 'connection',
-    user: 'Alex Rodriguez',
-    message: 'Wants to connect with you',
-    time: '1d ago',
-    read: true,
-    icon: UserPlus,
-  },
-];
-
-const recentMessages = [
-  {
-    id: 1,
-    user: 'Sarah Chen',
-    avatar: 'https://github.com/shadcn.png',
-    message: 'Hey! I saw your profile and would love to connect...',
-    time: '2h ago',
-    read: false,
-  },
-  {
-    id: 2,
-    user: 'Michael Brown',
-    avatar: 'https://github.com/shadcn.png',
-    message: 'Thanks for your application! We\'d like to schedule...',
-    time: '5h ago',
-    read: false,
-  },
-  {
-    id: 3,
-    user: 'Emma Wilson',
-    avatar: 'https://github.com/shadcn.png',
-    message: 'Following up on our last conversation about...',
-    time: '1d ago',
-    read: true,
-  },
-];
 
 export function Header() {
   const [currentUser, setCurrentUser] = useState<any>(() => getProfile());
   const router = useRouter();
-  const unreadNotifCount = recentNotifications.filter(n => !n.read).length;
-  const unreadMsgCount = recentMessages.filter(m => !m.read).length;
+  const [recentMsgsState, setRecentMsgsState] = useState<any[]>([]);
+  const [notificationsList, setNotificationsList] = useState<any[]>([]);
+  const unreadNotifCount = notificationsList.filter(n => !n.read).length;
+  const unreadMsgCount = recentMsgsState.filter(m => !m.read).length;
+  const unreadMsgs = recentMsgsState.filter((m) => !m.read);
 
   useEffect(() => {
     if (!currentUser) {
@@ -91,6 +38,143 @@ export function Header() {
       }).catch(() => null);
     }
   }, []);
+
+  // subscribe to notifications realtime for current user
+  useEffect(() => {
+    let chan: any;
+    try {
+      const profile = getProfile();
+      const userId = profile?.user_id ?? profile?.id ?? profile?.user?.id;
+      if (!userId) return;
+      const client = getSupabaseClient();
+      const normalize = (row: any) => ({
+        id: row.id,
+        type: row.type || row.notification_type || 'notification',
+        user: row.user || row.source_name || row.actor || 'System',
+        message: row.message || row.text || row.body || '',
+        time: row.created_at || row.time || '',
+        read: Boolean(row.read),
+      });
+
+      chan = client
+        .channel(`public:notifications:user:${userId}`)
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
+          (payload: any) => {
+            try {
+              const row = payload.new as any;
+              const item = normalize(row);
+              setNotificationsList((prev) => [item, ...prev]);
+            } catch (err) {
+              // ignore
+            }
+          }
+        )
+        .on(
+          'postgres_changes',
+          { event: 'UPDATE', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
+          (payload: any) => {
+            try {
+              const row = payload.new as any;
+              const item = normalize(row);
+              setNotificationsList((prev) => prev.map((n) => (n.id === item.id ? item : n)));
+            } catch (err) {
+              // ignore
+            }
+          }
+        )
+        .on(
+          'postgres_changes',
+          { event: 'DELETE', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
+          (payload: any) => {
+            try {
+              const oldRow = payload.old as any;
+              setNotificationsList((prev) => prev.filter((n) => n.id !== oldRow.id));
+            } catch (err) {
+              // ignore
+            }
+          }
+        )
+        .subscribe();
+    } catch (e) {
+      // ignore if supabase not configured
+    }
+
+    return () => {
+      try {
+        chan?.unsubscribe();
+      } catch (e) {}
+    };
+  }, []);
+
+    // load recent conversations/messages and subscribe to realtime updates
+    useEffect(() => {
+      let channel: any;
+      const loadRecent = async () => {
+        try {
+          const profile = getProfile();
+          if (!profile) return;
+          const userId = profile.user_id ?? profile.id ?? profile.user?.id;
+          const data = await getUserConversations(userId);
+          if (Array.isArray(data)) {
+            const mapped = data.slice(0, 10).map((c: any) => ({
+              id: c.id,
+              user: c.name || c.other_name || `Conversation ${c.id}`,
+              avatar: c.avatar || c.user?.avatar || '/placeholder.svg',
+              message: c.last_message ?? c.lastMessage ?? c.preview ?? '',
+              time: c.timestamp ?? c.last_message_at ?? '',
+              read: !Boolean(c.unread || c.unread_count || c.unreadMessages),
+            }));
+            setRecentMsgsState(mapped);
+          }
+        } catch (e) {
+          // ignore
+        }
+      };
+
+      loadRecent();
+
+      try {
+        const client = getSupabaseClient();
+        channel = client
+          .channel('header-realtime')
+          .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload: any) => {
+            const newRow = payload.new;
+            const convId = Number(newRow?.conversation_id);
+            if (!convId) return;
+            setRecentMsgsState((prev) => {
+              const idx = prev.findIndex((p) => Number(p.id) === convId);
+              const updatedItem = {
+                id: convId,
+                user: prev[idx]?.user || `Conversation ${convId}`,
+                avatar: prev[idx]?.avatar || '/placeholder.svg',
+                message: newRow.content,
+                time: newRow.created_at ? new Date(newRow.created_at).toLocaleString() : '',
+                read: false,
+              };
+              if (idx >= 0) {
+                const copy = [...prev];
+                copy[idx] = updatedItem;
+                // move to front
+                copy.unshift(copy.splice(idx, 1)[0]);
+                return copy;
+              }
+              // prepend new conversation entry
+              return [updatedItem, ...prev].slice(0, 10);
+            });
+          })
+          .subscribe();
+      } catch (e) {
+        // ignore realtime if not configured
+      }
+
+      return () => {
+        try {
+          channel?.unsubscribe();
+        } catch (e) {}
+      };
+    }, []);
 
   const handleSignOut = () => {
     // clear in-memory profile and auth tokens
@@ -139,20 +223,26 @@ export function Header() {
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <div className="max-h-[400px] overflow-y-auto">
-                {recentMessages.map((msg) => (
+                {unreadMsgs.length === 0 ? (
+                  <div className="p-4 text-sm text-muted-foreground">No unread messages</div>
+                ) : (
+                  unreadMsgs.map((msg) => (
                   <DropdownMenuItem
                     key={msg.id}
                     className={`flex items-start gap-3 p-3 cursor-pointer ${
                       !msg.read ? 'bg-primary/5' : ''
                     }`}
                     onClick={() => {
-                      sessionStorage.setItem('messageUser', msg.user);
+                      try {
+                        if (msg.id) sessionStorage.setItem('messageUserId', String(msg.id));
+                        sessionStorage.setItem('messageUser', msg.user || '');
+                      } catch {}
                       router.push('/messages');
                     }}
                   >
                     <Avatar className="h-10 w-10 flex-shrink-0">
                       <AvatarImage src={msg.avatar || "/placeholder.svg"} />
-                      <AvatarFallback>{msg.user.charAt(0)}</AvatarFallback>
+                      <AvatarFallback>{String(msg.user || '').charAt(0)}</AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium">{msg.user}</p>
@@ -163,7 +253,8 @@ export function Header() {
                       <div className="h-2 w-2 rounded-full bg-primary flex-shrink-0 mt-1" />
                     )}
                   </DropdownMenuItem>
-                ))}
+                  ))
+                )}
               </div>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
@@ -194,32 +285,36 @@ export function Header() {
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <div className="max-h-[400px] overflow-y-auto">
-                {recentNotifications.map((notif) => {
-                  const Icon = notif.icon;
-                  return (
-                    <DropdownMenuItem
-                      key={notif.id}
-                      className={`flex items-start gap-3 p-3 cursor-pointer ${
-                        !notif.read ? 'bg-primary/5' : ''
-                      }`}
-                      onClick={() => router.push('/notifications')}
-                    >
-                      <div className="mt-0.5">
-                        <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                          <Icon className="h-4 w-4 text-primary" />
+                {notificationsList.length === 0 ? (
+                  <div className="p-4 text-sm text-muted-foreground">No new notifications</div>
+                ) : (
+                  notificationsList.map((notif) => {
+                    const Icon = notif.icon ?? (notif.type === 'application' ? Briefcase : notif.type === 'message' ? MessageSquare : notif.type === 'connection' ? UserPlus : Bell);
+                    return (
+                      <DropdownMenuItem
+                        key={notif.id}
+                        className={`flex items-start gap-3 p-3 cursor-pointer ${
+                          !notif.read ? 'bg-primary/5' : ''
+                        }`}
+                        onClick={() => router.push('/notifications')}
+                      >
+                        <div className="mt-0.5">
+                          <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                            <Icon className="h-4 w-4 text-primary" />
+                          </div>
                         </div>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium">{notif.user}</p>
-                        <p className="text-xs text-muted-foreground line-clamp-2">{notif.message}</p>
-                        <p className="text-xs text-muted-foreground mt-1">{notif.time}</p>
-                      </div>
-                      {!notif.read && (
-                        <div className="h-2 w-2 rounded-full bg-primary flex-shrink-0 mt-1" />
-                      )}
-                    </DropdownMenuItem>
-                  );
-                })}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium">{notif.user}</p>
+                          <p className="text-xs text-muted-foreground line-clamp-2">{notif.message}</p>
+                          <p className="text-xs text-muted-foreground mt-1">{notif.time}</p>
+                        </div>
+                        {!notif.read && (
+                          <div className="h-2 w-2 rounded-full bg-primary flex-shrink-0 mt-1" />
+                        )}
+                      </DropdownMenuItem>
+                    );
+                  })
+                )}
               </div>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>

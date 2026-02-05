@@ -23,14 +23,29 @@ import {
 import { getUserNetwork } from "@/lib/supabase";
 import { getProfile } from "@/lib/profileStore";
 import { apiFetch } from "@/lib/api";
+import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
 
 export default function UsersPage() {
   const [suggested, setSuggested] = useState([]);
   const [invites, setInvites] = useState([]);
   const [myConnections, setMyConnections] = useState([]);
+  const [removingConnectionId, setRemovingConnectionId] = useState<number | null>(null);
   const [pending, setPending] = useState([]);
   const [invitationsOpen, setInvitationsOpen] = useState(true);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
+
+  const handleMessage = (user: any) => {
+    const targetId = user?.id;
+    if (!targetId) return;
+    try {
+      // store a marker so the messages page can open the right conversation
+      sessionStorage.setItem('messageUser', String(user.name || ''));
+      sessionStorage.setItem('messageUserId', String(targetId));
+    } catch {}
+    router.push('/messages');
+  };
 
   // Fetch network data from RPC on component mount
   useEffect(() => {
@@ -58,6 +73,7 @@ export default function UsersPage() {
           if (data.connections && Array.isArray(data.connections)) {
             const mappedConnections = data.connections.map((c: any) => ({
               id: c.id,
+              connectionId: c.connection_id ?? c.connectionId ?? c.connection?.id ?? undefined,
               name: c.name || c.other_name || c.full_name || "",
               title: c.title || c.headline || c.other_headline || "",
               company: c.company || c.company_name || "",
@@ -75,18 +91,33 @@ export default function UsersPage() {
 
           // Incoming requests / invitations
           if (data.requests && Array.isArray(data.requests)) {
-            const mappedRequests = data.requests.map((r: any) => ({
-              id: r.id,
-              name: r.other_name || r.name || "",
-              title: r.other_headline || r.other_title || "",
-              company: r.company || "",
-              avatar: r.other_avatar || r.avatar || "/placeholder.svg",
-              banner: r.cover_image_url || r.banner || "",
-              skills: [],
-              type: "invitation",
-              created_at: r.created_at,
-            }));
-            setInvites(mappedRequests);
+            const incoming: any[] = [];
+            const sent: any[] = [];
+            for (const r of data.requests) {
+              const item = {
+                id: r.id,
+                connectionId: r.id ?? r.connection_id ?? r.connectionId ?? undefined,
+                name: r.other_name || r.name || "",
+                title: r.other_headline || r.other_title || "",
+                company: r.company || "",
+                avatar: r.other_avatar || r.avatar || "/placeholder.svg",
+                banner: r.cover_image_url || r.banner || "",
+                skills: [],
+                type: "invitation",
+                created_at: r.created_at,
+                requester_id: r.requester_id,
+                receiver_id: r.receiver_id,
+              };
+
+              // If the current user is the requester, treat as a sent (pending) request
+              if (r.requester_id && Number(r.requester_id) === Number(userId)) {
+                sent.push({ ...item, status: 'pending', isReceived: false });
+              } else {
+                incoming.push(item);
+              }
+            }
+            setInvites(incoming);
+            setPending(sent);
           }
 
           // Suggestions
@@ -183,9 +214,9 @@ export default function UsersPage() {
       await apiFetch(`/connections/requests/${connectionId}/accept`, {
         method: "POST",
       });
-      const accepted = pending.find(
-        (p) => p.connectionId === connectionId || p.id === connectionId,
-      );
+      const accepted =
+        pending.find((p) => p.connectionId === connectionId || p.id === connectionId) ||
+        invites.find((i) => i.connectionId === connectionId || i.id === connectionId);
       if (accepted) {
         setMyConnections((prev) => [
           ...prev,
@@ -193,9 +224,30 @@ export default function UsersPage() {
         ]);
       }
       setPending((prev) => prev.filter((p) => p.connectionId !== connectionId));
+      setInvites((prev) => prev.filter((i) => i.connectionId !== connectionId && i.id !== connectionId));
       console.log("Connection accepted");
     } catch (e) {
       console.error("Unable to accept request", e);
+    }
+  };
+
+  const handleRemoveConnection = async (userId: number) => {
+    try {
+      setRemovingConnectionId(userId);
+      const connection = myConnections.find((c) => c.id === userId);
+      if (!connection || !connection.connectionId) {
+        toast.error("Connection not found");
+        return;
+      }
+      await apiFetch(`/connections/${connection.connectionId}`, {
+        method: "DELETE",
+      });
+      setMyConnections((prev) => prev.filter((c) => c.id !== userId));
+      toast.success("Connection removed");
+    } catch (e) {
+      toast.error((e as any)?.message || "Unable to remove connection");
+    } finally {
+      setRemovingConnectionId((prev) => (prev === userId ? null : prev));
     }
   };
 
@@ -331,9 +383,7 @@ export default function UsersPage() {
                               <Button
                                 size="sm"
                                 className="flex-1"
-                                onClick={() =>
-                                  handleAccept(user.connectionId ?? user.id)
-                                }
+                                onClick={() => handleAccept(user.connectionId ?? user.id)}
                               >
                                 Accept
                               </Button>
@@ -341,12 +391,16 @@ export default function UsersPage() {
                                 variant="outline"
                                 size="sm"
                                 className="flex-1 bg-transparent"
-                                onClick={() =>
-                                  handleReject(
-                                    user.connectionId ?? user.id,
-                                    false,
-                                  )
-                                }
+                                onClick={() => handleMessage(user)}
+                              >
+                                <MessageSquare className="h-3.5 w-3.5 mr-1.5" />
+                                Message
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="flex-1 bg-transparent"
+                                onClick={() => handleReject(user.connectionId ?? user.id, false)}
                               >
                                 Ignore
                               </Button>
@@ -420,14 +474,6 @@ export default function UsersPage() {
                           <UserPlus className="h-3.5 w-3.5 mr-1.5" />
                           Connect
                         </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="flex-1 bg-transparent"
-                        >
-                          <MessageSquare className="h-3.5 w-3.5 mr-1.5" />
-                          Message
-                        </Button>
                       </div>
                     </div>
                   </Card>
@@ -488,14 +534,26 @@ export default function UsersPage() {
                     </div>
 
                     <div className="px-4">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full bg-transparent"
-                      >
-                        <MessageSquare className="h-3.5 w-3.5 mr-1.5" />
-                        Message
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1 bg-transparent"
+                          onClick={() => handleMessage(user)}
+                        >
+                          <MessageSquare className="h-3.5 w-3.5 mr-1.5" />
+                          Message
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1 bg-transparent text-destructive"
+                          onClick={() => handleRemoveConnection(user.id)}
+                          disabled={removingConnectionId === user.id}
+                        >
+                          {removingConnectionId === user.id ? 'Removing...' : 'Remove'}
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </Card>
