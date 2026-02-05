@@ -26,93 +26,16 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { getUserConversations } from '@/lib/supabase';
+import { getProfile } from '@/lib/profileStore';
+import { apiFetch } from '@/lib/api';
 
-const mockConversations = [
-  {
-    id: 1,
-    name: 'Sarah Chen',
-    role: 'Product Manager at Vercel',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah',
-    lastMessage: "That sounds great! Let's schedule a call...",
-    timestamp: '2 min',
-    unread: true,
-    online: true,
-  },
-  {
-    id: 2,
-    name: 'Alex Rodriguez',
-    role: 'Recruiter at Stripe',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Alex',
-    lastMessage: "Thanks for applying! We'd love to...",
-    timestamp: '1 hour',
-    unread: false,
-    online: true,
-  },
-  {
-    id: 3,
-    name: 'Jordan Tech',
-    role: 'Senior Developer at Google',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Jordan',
-    lastMessage: 'Your portfolio is impressive!',
-    timestamp: 'Yesterday',
-    unread: false,
-    online: false,
-  },
-  {
-    id: 4,
-    name: 'Emily Watson',
-    role: 'CTO at Startup',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Emily',
-    lastMessage: 'Looking forward to our meeting',
-    timestamp: '2 days',
-    unread: false,
-    online: false,
-  },
-];
-
-const messages = [
-  {
-    id: 1,
-    sender: 'Sarah Chen',
-    content: "Hi! I saw your profile and I'm really impressed with your work on the AI dashboard project.",
-    timestamp: '2:30 PM',
-    isUser: false,
-  },
-  {
-    id: 2,
-    sender: 'You',
-    content: "Thank you so much! I'm very interested in the opportunity at Vercel. The product is amazing.",
-    timestamp: '2:35 PM',
-    isUser: true,
-  },
-  {
-    id: 3,
-    sender: 'Sarah Chen',
-    content: "That's great to hear! We're looking for someone with your exact skill set. Would you be available for a quick call this week?",
-    timestamp: '2:38 PM',
-    isUser: false,
-  },
-  {
-    id: 4,
-    sender: 'You',
-    content: "Absolutely! I'm free Thursday afternoon or Friday morning. What works best for you?",
-    timestamp: '2:40 PM',
-    isUser: true,
-  },
-  {
-    id: 5,
-    sender: 'Sarah Chen',
-    content: "That sounds great! Let's schedule a call for Thursday at 2 PM. I'll send you a calendar invite shortly.",
-    timestamp: '2:42 PM',
-    isUser: false,
-  },
-];
-
-const conversations = mockConversations; // Declare the conversations variable
+// messages will be loaded from API per conversation
 
 export default function MessagesPage() {
-  const [conversationList, setConversationList] = useState(mockConversations);
+  const [conversationList, setConversationList] = useState([]);
+  const [connections, setConnections] = useState<any[]>([]);
   const [messageInput, setMessageInput] = useState('');
+  const [messagesForChat, setMessagesForChat] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [mutedConversations, setMutedConversations] = useState<Set<number>>(new Set());
   const [blockedUsers, setBlockedUsers] = useState<Set<number>>(new Set());
@@ -123,24 +46,33 @@ export default function MessagesPage() {
   useEffect(() => {
     const fetchConversations = async () => {
       try {
-        // Get current user ID from localStorage (set during auth)
-        const currentUser = typeof window !== 'undefined' ? localStorage.getItem('currentUser') : null;
-        if (!currentUser) {
-          console.log('[v0] No current user, using mock conversations');
+        // Prefer in-memory profile store (set during auth) over localStorage
+        const profile = getProfile();
+        if (!profile) {
+          console.log('[v0] No profile available in store, using mock conversations');
           setLoading(false);
           return;
         }
 
-        const user = JSON.parse(currentUser);
-        const userId = user.id;
+        const userId = profile.user_id ?? profile.id ?? profile.user?.id;
 
         console.log('[v0] Fetching conversations for user:', userId);
         const data = await getUserConversations(userId);
         console.log('[v0] Fetched conversations:', data);
 
-        // Transform RPC data to match component structure if needed
+        // Normalize RPC data to expected UI shape
         if (data && Array.isArray(data)) {
-          setConversationList(data);
+          const mapped = data.map((c: any) => ({
+            id: c.id,
+            name: c.name || c.other_name || c.user?.name || c.display_name || '',
+            role: c.role || c.title || c.user?.title || c.role_description || c.position || '',
+            avatar: c.avatar || c.user?.avatar || c.avatar_url || '/placeholder.svg',
+            lastMessage: c.last_message || c.lastMessage || c.preview || c.snippet || '',
+            timestamp: c.timestamp || c.last_seen_at || c.updated_at || c.time || '',
+            unread: Boolean(c.unread || c.unread_count || c.unreadMessages),
+            online: Boolean(c.online || c.is_online || c.user?.online),
+          }));
+          setConversationList(mapped);
         }
       } catch (error) {
         console.error('[v0] Error fetching conversations:', error);
@@ -165,41 +97,190 @@ export default function MessagesPage() {
     }
   }, [conversationList]);
 
-  const handleSendMessage = () => {
-    if (messageInput.trim()) {
-      setMessageInput('');
+  // load messages for selected conversation
+  useEffect(() => {
+    const load = async () => {
+      if (!selectedConversation) return;
+      try {
+        const msgs = await apiFetch<any[]>(`/messages/conversations/${selectedConversation}`);
+        const mapped = msgs.map((m) => ({
+          id: m.id,
+          sender: m.sender_name || m.sender || m.sender_id || 'Unknown',
+          content: m.content,
+          timestamp: m.created_at ? new Date(m.created_at).toLocaleString() : '',
+          isUser: Boolean(m.sender_id === (getProfile()?.user_id ?? getProfile()?.id)),
+        }));
+        setMessagesForChat(mapped);
+      } catch (err) {
+        console.error('[v0] Failed to load messages for conversation', selectedConversation, err);
+        setMessagesForChat([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void load();
+  }, [selectedConversation]);
+
+  // Fetch connections for search
+  useEffect(() => {
+    const fetchConnections = async () => {
+      try {
+        const profile = getProfile();
+        const userId = profile.user_id ?? profile.id ?? profile.user?.id;
+        const cons = await apiFetch<any[]>('/connections');
+        if (Array.isArray(cons)) {
+          const formatted = cons
+            .map((c) => {
+              const otherId = c.requester_id === userId ? c.receiver_id : c.requester_id;
+              return {
+                id: Number(otherId ?? c.receiver_id ?? c.requester_id),
+                name: c.other_name || `User ${otherId ?? ''}`,
+                avatar: (c.other_avatar ? String(c.other_avatar) : '') || '/placeholder.svg',
+                headline: c.other_headline || '',
+              };
+            })
+            .filter((c) => c.id && Number.isFinite(c.id));
+          setConnections(formatted);
+        }
+      } catch (e) {
+        // ignore
+      }
+    };
+    void fetchConnections();
+  }, []);
+
+  const openOrCreateConversation = async (participant: any) => {
+    if (!participant || !participant.id) return;
+    try {
+      const convo = await apiFetch<any>('/messages/conversations', {
+        method: 'POST',
+        json: { participant_id: participant.id },
+      });
+      const convoId = convo?.id ?? convo?.conversation_id ?? convo;
+      if (!convoId) return;
+      const entry = {
+        id: convoId,
+        name: participant.name,
+        role: participant.headline || '',
+        avatar: participant.avatar || '/placeholder.svg',
+        lastMessage: '',
+        timestamp: 'Just now',
+        unread: 0,
+        online: false,
+      };
+      setConversationList((prev) => {
+        const without = prev.filter((c) => c.id !== entry.id);
+        return [entry, ...without];
+      });
+      setSelectedConversation(convoId);
+    } catch (err) {
+      console.error('[v0] Failed to open/create conversation', err);
     }
   };
 
+  const listToRender = (searchQuery || '').trim()
+    ? connections.filter((c) => String(c.name || '').toLowerCase().includes(searchQuery.toLowerCase()))
+    : conversationList;
+
+  const handleSendMessage = () => {
+    if (!messageInput.trim() || !selectedConversation) return;
+    const send = async () => {
+      try {
+        const payload = { content: messageInput };
+        const msg = await apiFetch<any>(`/messages/conversations/${selectedConversation}/messages`, {
+          method: 'POST',
+          json: payload,
+        });
+        const mapped = {
+          id: msg.id,
+          sender: msg.sender_name || msg.sender || 'You',
+          content: msg.content,
+          timestamp: msg.created_at ? new Date(msg.created_at).toLocaleString() : '',
+          isUser: true,
+        };
+        setMessagesForChat((prev) => [...prev, mapped]);
+        setMessageInput('');
+      } catch (err) {
+        console.error('[v0] Failed to send message', err);
+      }
+    };
+    void send();
+  };
+
   const handleDeleteConversation = () => {
-    setConversationList(prev => prev.filter(c => c.id !== selectedConversation));
-    setSelectedConversation(conversationList[0]?.id || 0);
-    console.log('[v0] Deleted conversation:', selectedConversation);
+    const del = async () => {
+      if (!selectedConversation) return;
+      try {
+        await apiFetch(`/messages/conversations/${selectedConversation}`, { method: 'DELETE' });
+        setConversationList((prev) => prev.filter((c) => c.id !== selectedConversation));
+        setSelectedConversation(conversationList[0]?.id || 0);
+        setMessagesForChat([]);
+        console.log('[v0] Deleted conversation:', selectedConversation);
+      } catch (err) {
+        console.error('[v0] Failed to delete conversation', err);
+      }
+    };
+    void del();
   };
 
   const handleArchiveConversation = () => {
-    setConversationList(prev => prev.filter(c => c.id !== selectedConversation));
-    console.log('[v0] Archived conversation:', selectedConversation);
+    const arch = async () => {
+      if (!selectedConversation) return;
+      try {
+        await apiFetch(`/messages/conversations/${selectedConversation}/archive`, { method: 'POST' });
+        setConversationList((prev) => prev.filter((c) => c.id !== selectedConversation));
+        setSelectedConversation(conversationList[0]?.id || 0);
+        setMessagesForChat([]);
+      } catch (err) {
+        // fallback to local behavior
+        setConversationList((prev) => prev.filter((c) => c.id !== selectedConversation));
+        console.error('[v0] Failed to archive conversation', err);
+      }
+    };
+    void arch();
   };
 
   const handleMuteConversation = () => {
-    setMutedConversations(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(selectedConversation)) {
-        newSet.delete(selectedConversation);
-        console.log('[v0] Unmuted conversation:', selectedConversation);
-      } else {
-        newSet.add(selectedConversation);
-        console.log('[v0] Muted conversation:', selectedConversation);
+    const toggle = async () => {
+      try {
+        await apiFetch(`/messages/conversations/${selectedConversation}/mute`, { method: 'POST' });
+        setMutedConversations((prev) => {
+          const newSet = new Set(prev);
+          if (newSet.has(selectedConversation)) newSet.delete(selectedConversation);
+          else newSet.add(selectedConversation);
+          return newSet;
+        });
+      } catch (err) {
+        // local fallback
+        setMutedConversations((prev) => {
+          const newSet = new Set(prev);
+          if (newSet.has(selectedConversation)) newSet.delete(selectedConversation);
+          else newSet.add(selectedConversation);
+          return newSet;
+        });
       }
-      return newSet;
-    });
+    };
+    void toggle();
   };
 
   const handleBlockUser = () => {
-    setBlockedUsers(prev => new Set(prev).add(selectedConversation));
-    setConversationList(prev => prev.filter(c => c.id !== selectedConversation));
-    console.log('[v0] Blocked user:', selectedConversation);
+    const blk = async () => {
+      try {
+        await apiFetch(`/messages/conversations/${selectedConversation}/block`, { method: 'POST' });
+      } catch (err) {
+        console.error('[v0] Failed to block user', err);
+      }
+      setBlockedUsers((prev) => new Set(prev).add(selectedConversation));
+      setConversationList((prev) => prev.filter((c) => c.id !== selectedConversation));
+    };
+    void blk();
+  };
+
+  const markConversationRead = (conversationId?: number) => {
+    if (!conversationId) return;
+    void apiFetch(`/messages/conversations/${conversationId}/read`, { method: 'POST' }).catch(() => {});
+    setConversationList((prev) => prev.map((c) => (c.id === conversationId ? { ...c, unread: 0 } : c)));
   };
 
   const selectedChat = conversationList.find(c => c.id === selectedConversation);
@@ -246,10 +327,16 @@ export default function MessagesPage() {
         </div>
 
         <div className="flex-1 overflow-y-auto">
-          {conversationList.map((conv) => (
+          {listToRender.map((conv) => (
             <button
               key={conv.id}
-              onClick={() => setSelectedConversation(conv.id)}
+              onClick={() => {
+                if ((searchQuery || '').trim()) {
+                  void openOrCreateConversation(conv);
+                } else {
+                  setSelectedConversation(conv.id);
+                }
+              }}
               className={`w-full p-4 text-left transition-all duration-200 border-b border-border/50 ${
                 selectedConversation === conv.id
                   ? 'bg-primary/5 border-l-2 border-l-primary'
@@ -310,7 +397,7 @@ export default function MessagesPage() {
                 <div className="min-w-0">
                   <h2 className="font-semibold text-foreground">{selectedChat.name}</h2>
                   <p className="text-xs text-muted-foreground">
-                    {selectedChat.online ? 'Active now' : 'Offline'}
+                    {selectedChat.online ? 'Active now' : 'Active now'}
                   </p>
                 </div>
               </div>
@@ -361,7 +448,7 @@ export default function MessagesPage() {
               <div className="text-center text-xs text-muted-foreground py-4">
                 <span className="bg-background px-3 py-1 rounded-full">Today</span>
               </div>
-              {messages.map((msg) => (
+              {messagesForChat.map((msg) => (
                 <div
                   key={msg.id}
                   className={`flex ${msg.isUser ? 'justify-end' : 'justify-start'}`}

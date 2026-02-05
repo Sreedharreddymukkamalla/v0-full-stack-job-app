@@ -6,7 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ChevronLeft, ChevronRight, Briefcase, MapPin, Clock, Users2, Pin } from 'lucide-react';
-import { MOCK_JOBS, MOCK_USERS } from '@/lib/mock-data';
+import { MOCK_USERS } from '@/lib/mock-data';
 import { getCurrentUser } from '@/lib/auth';
 import { getHomePageData } from '@/app/(app)/feed/getHomePageData';
 
@@ -16,7 +16,7 @@ export function FeedSidebar() {
   // Carousel state for jobs
   const [currentJobIndex, setCurrentJobIndex] = useState(0);
   const jobsPerPage = 3;
-  const [jobs, setJobs] = useState<any[]>(MOCK_JOBS);
+  const [jobs, setJobs] = useState<any[]>([]);
   const totalJobs = jobs.length;
   const latestJobs = jobs.slice(currentJobIndex, currentJobIndex + jobsPerPage);
   
