@@ -147,7 +147,7 @@ export function FeedSidebar() {
   };
 
   return (
-    <div className="space-y-6 sticky top-20">
+    <div className="space-y-6 sticky top-6">
       {/* Latest Jobs Card */}
       <Card className="p-5 shadow-sm border-border/50">
         <div className="flex items-center justify-between mb-5">
@@ -155,6 +155,7 @@ export function FeedSidebar() {
             <Pin className="h-5 w-5 text-foreground" />
             <h2 className="font-bold text-lg text-foreground">Latest Jobs</h2>
           </div>
+          <Pin className="h-4 w-4 text-muted-foreground" />
         </div>
 
         <div className="space-y-4 transition-all duration-500">
