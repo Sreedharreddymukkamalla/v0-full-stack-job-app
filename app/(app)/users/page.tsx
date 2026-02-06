@@ -391,15 +391,6 @@ export default function UsersPage() {
                                 variant="outline"
                                 size="sm"
                                 className="flex-1 bg-transparent"
-                                onClick={() => handleMessage(user)}
-                              >
-                                <MessageSquare className="h-3.5 w-3.5 mr-1.5" />
-                                Message
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="flex-1 bg-transparent"
                                 onClick={() => handleReject(user.connectionId ?? user.id, false)}
                               >
                                 Ignore

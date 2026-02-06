@@ -126,7 +126,7 @@ export default function SearchPage() {
   const totalResults = results.people.length + results.posts.length + results.jobs.length;
 
   return (
-    <div className="w-full max-w-4xl mx-auto px-4 py-6">
+    <div className="w-full max-w-7xl mx-auto px-4 py-6">
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-4xl font-bold text-foreground mb-2">
