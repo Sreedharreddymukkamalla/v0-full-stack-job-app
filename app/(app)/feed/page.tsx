@@ -38,6 +38,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { FeedSidebar } from "@/components/feed-sidebar";
 import { getHomePageData } from "../feed/getHomePageData";
 import { getProfile } from "@/lib/profileStore";
+import { apiFetch } from "@/lib/api";
 
 interface Post {
   id: string;
@@ -67,6 +68,9 @@ export default function FeedPage() {
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [shareContent, setShareContent] = useState("");
   const [sharingPost, setSharingPost] = useState<Post | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingPost, setEditingPost] = useState<Post | null>(null);
+  const [editContent, setEditContent] = useState("");
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
   const [uploadedMedia, setUploadedMedia] = useState<{
@@ -210,7 +214,76 @@ export default function FeedPage() {
   };
 
   const handleDelete = (postId: string) => {
+    // optimistic remove client-side and call API
     setPosts((prev) => prev.filter((p) => p.id !== postId));
+    (async () => {
+      try {
+        await apiFetch(`/posts/${postId}`, { method: "DELETE" });
+      } catch (err) {
+        console.error("Failed to delete post", err);
+      }
+    })();
+  };
+
+  const openEditDialog = (post: Post) => {
+    setEditingPost(post);
+    setEditContent(post.content || "");
+    setEditDialogOpen(true);
+  };
+
+  const handleEditSubmit = async () => {
+    if (!editingPost) return;
+    const trimmed = editContent.trim();
+    if (!trimmed) return;
+    try {
+      const res = await apiFetch<any>(`/posts/${editingPost.id}`, {
+        method: "PATCH",
+        json: { content: trimmed },
+      });
+      // update local post list from response (fallback to local edit)
+      setPosts((prev) =>
+        prev.map((p) => (p.id === editingPost.id ? { ...p, content: res?.content ?? trimmed } : p)),
+      );
+      setEditDialogOpen(false);
+      setEditingPost(null);
+      setEditContent("");
+    } catch (err) {
+      console.error("Failed to update post", err);
+    }
+  };
+
+  const handleCreatePost = async () => {
+    const postContent = newPost.trim();
+    if (!postContent) return;
+    const mediaUrl = uploadedMedia?.url ?? null;
+    try {
+      const created = await apiFetch<any>("/posts", {
+        method: "POST",
+        json: {
+          content: postContent,
+          visibility: "public",
+          media_url: mediaUrl,
+        },
+      });
+
+      // Map returned post to our Post shape (best-effort)
+      const newP: Post = {
+        id: created?.id?.toString() ?? String(Math.random()),
+        author_id: created?.author_id?.toString() ?? currentUser?.user_id ?? "",
+        content: created?.content ?? postContent,
+        created_at: created?.created_at ?? new Date().toISOString(),
+        likes: created?.like_count ?? 0,
+        comments: created?.comment_count ?? 0,
+        shares: 0,
+        image: created?.media_url ?? mediaUrl ?? undefined,
+      } as any;
+
+      setPosts((prev) => [newP, ...prev]);
+      setNewPost("");
+      setUploadedMedia(null);
+    } catch (err) {
+      console.error("Failed to create post", err);
+    }
   };
 
   const toggleComments = (postId: string) => {
@@ -339,6 +412,7 @@ export default function FeedPage() {
                   </div>
                   <Button
                     disabled={!newPost.trim()}
+                    onClick={handleCreatePost}
                     className="rounded-xl px-6 h-9 font-semibold shadow-sm"
                   >
                     Post
@@ -412,17 +486,26 @@ export default function FeedPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          {post.author_id === currentUser?.id && (
-                            <DropdownMenuItem
-                              onClick={() => handleDelete(post.id)}
-                              className="text-destructive focus:text-destructive cursor-pointer"
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Delete post
-                            </DropdownMenuItem>
+                          {Number(post.author_id) === Number(currentUser?.user_id) && (
+                            <>
+                              <DropdownMenuItem
+                                onClick={() => openEditDialog(post)}
+                                className="cursor-pointer"
+                              >
+                                <MoreHorizontal className="mr-2 h-4 w-4" />
+                                Edit post
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleDelete(post.id)}
+                                className="text-destructive focus:text-destructive cursor-pointer"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete post
+                              </DropdownMenuItem>
+                            </>
                           )}
-                          {post.author_id !== currentUser?.id && (
-                            <DropdownMenuItem className="cursor-pointer text-destructive focus:text-destructive">
+                          {Number(post.author_id) !== Number(currentUser?.user_id) && (
+                            <DropdownMenuItem className="cursor-pointer text-red-600 hover:bg-red-600 hover:text-white transition-colors">
                               Report post
                             </DropdownMenuItem>
                           )}
@@ -637,7 +720,7 @@ export default function FeedPage() {
           <div className="space-y-4 mt-4">
             <div className="flex gap-3">
               <Avatar className="h-10 w-10 ring-2 ring-primary/10">
-                <AvatarImage src={currentUser?.avatar || "/placeholder.svg"} />
+                <AvatarImage src={currentUser?.profile_image_url || "/placeholder.svg"} />
                 <AvatarFallback className="bg-primary/10 text-primary font-semibold">
                   {currentUser?.name?.charAt(0) || "U"}
                 </AvatarFallback>
@@ -693,6 +776,51 @@ export default function FeedPage() {
                 disabled={!shareContent.trim()}
               >
                 Share
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Edit Post Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Edit post</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div className="flex gap-3">
+              <Avatar className="h-10 w-10 ring-2 ring-primary/10">
+                <AvatarImage src={currentUser?.profile_image_url || "/placeholder.svg"} />
+                <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                  {currentUser?.name?.charAt(0) || "U"}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1">
+                <Textarea
+                  placeholder="Edit your post"
+                  value={editContent}
+                  onChange={(e) => setEditContent(e.target.value)}
+                  className="resize-none min-h-[100px] border-0 bg-secondary/30 rounded-xl p-4 focus-visible:ring-1 focus-visible:ring-primary/30"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setEditDialogOpen(false);
+                  setEditingPost(null);
+                }}
+                className="bg-transparent"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleEditSubmit}
+                disabled={!editContent.trim()}
+              >
+                Save
               </Button>
             </div>
           </div>

@@ -21,16 +21,18 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { getUserNetwork } from "@/lib/supabase";
-import { getProfile } from "@/lib/profileStore";
+import { getProfile, loadProfileFromApi } from "@/lib/profileStore";
 import { apiFetch } from "@/lib/api";
-import { toast } from 'sonner';
-import { useRouter } from 'next/navigation';
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 export default function UsersPage() {
   const [suggested, setSuggested] = useState([]);
   const [invites, setInvites] = useState([]);
   const [myConnections, setMyConnections] = useState([]);
-  const [removingConnectionId, setRemovingConnectionId] = useState<number | null>(null);
+  const [removingConnectionId, setRemovingConnectionId] = useState<
+    number | null
+  >(null);
   const [pending, setPending] = useState([]);
   const [invitationsOpen, setInvitationsOpen] = useState(true);
   const [loading, setLoading] = useState(true);
@@ -41,24 +43,65 @@ export default function UsersPage() {
     if (!targetId) return;
     try {
       // store a marker so the messages page can open the right conversation
-      sessionStorage.setItem('messageUser', String(user.name || ''));
-      sessionStorage.setItem('messageUserId', String(targetId));
-    } catch { }
-    router.push('/messages');
+      sessionStorage.setItem("messageUser", String(user.name || ""));
+      sessionStorage.setItem("messageUserId", String(targetId));
+    } catch {}
+    router.push("/messages");
   };
 
   // Fetch network data from RPC on component mount
   useEffect(() => {
     const fetchNetworkData = async () => {
       try {
-        // Use in-memory profile store instead of localStorage
-        const profile = getProfile();
+        // Use in-memory profile store, try to rehydrate from API on reload
+        let profile = getProfile();
         if (!profile) {
-          console.log(
-            "[v0] No profile available in store, using mock network data",
-          );
-          setLoading(false);
-          return;
+          try {
+            console.log(
+              "[v0] No in-memory profile, attempting to load from API...",
+            );
+            const loaded = await loadProfileFromApi();
+            if (loaded) {
+              profile = loaded;
+              console.log("[v0] Loaded profile from API fallback", loaded);
+            }
+          } catch (e) {
+            console.warn("[v0] loadProfileFromApi failed:", e);
+          }
+
+          // If API fallback didn't work, try common storage keys as a last resort
+          if (!profile) {
+            try {
+              const fromSession =
+                sessionStorage.getItem("aimploy_current_user") ||
+                sessionStorage.getItem("profile");
+              const fromLocal =
+                localStorage.getItem("aimploy_current_user") ||
+                localStorage.getItem("profile");
+              const parsed = fromSession
+                ? JSON.parse(fromSession)
+                : fromLocal
+                  ? JSON.parse(fromLocal)
+                  : null;
+              if (parsed) {
+                profile = parsed;
+                console.log(
+                  "[v0] Loaded profile from storage fallback",
+                  parsed,
+                );
+              } else {
+                console.log(
+                  "[v0] No profile available in store or storage; skipping network fetch",
+                );
+                setLoading(false);
+                return;
+              }
+            } catch (err) {
+              console.error("[v0] Error parsing stored profile", err);
+              setLoading(false);
+              return;
+            }
+          }
         }
 
         const userId = profile.user_id ?? profile.id ?? profile.user?.id;
@@ -73,7 +116,11 @@ export default function UsersPage() {
           if (data.connections && Array.isArray(data.connections)) {
             const mappedConnections = data.connections.map((c: any) => ({
               id: c.id,
-              connectionId: c.connection_id ?? c.connectionId ?? c.connection?.id ?? undefined,
+              connectionId:
+                c.connection_id ??
+                c.connectionId ??
+                c.connection?.id ??
+                undefined,
               name: c.name || c.other_name || c.full_name || "",
               title: c.title || c.headline || c.other_headline || "",
               company: c.company || c.company_name || "",
@@ -96,7 +143,8 @@ export default function UsersPage() {
             for (const r of data.requests) {
               const item = {
                 id: r.id,
-                connectionId: r.id ?? r.connection_id ?? r.connectionId ?? undefined,
+                connectionId:
+                  r.id ?? r.connection_id ?? r.connectionId ?? undefined,
                 name: r.other_name || r.name || "",
                 title: r.other_headline || r.other_title || "",
                 company: r.company || "",
@@ -111,7 +159,7 @@ export default function UsersPage() {
 
               // If the current user is the requester, treat as a sent (pending) request
               if (r.requester_id && Number(r.requester_id) === Number(userId)) {
-                sent.push({ ...item, status: 'pending', isReceived: false });
+                sent.push({ ...item, status: "pending", isReceived: false });
               } else {
                 incoming.push(item);
               }
@@ -196,7 +244,7 @@ export default function UsersPage() {
       try {
         sessionStorage.removeItem("suggestions_cache");
         sessionStorage.removeItem("suggestions_cache_ts");
-      } catch { }
+      } catch {}
       setSuggested((prev) => prev.filter((p) => p.id !== userId));
       setPending((prev) =>
         prev.filter((p) => p.connectionId !== createdConnectionId),
@@ -215,8 +263,12 @@ export default function UsersPage() {
         method: "POST",
       });
       const accepted =
-        pending.find((p) => p.connectionId === connectionId || p.id === connectionId) ||
-        invites.find((i) => i.connectionId === connectionId || i.id === connectionId);
+        pending.find(
+          (p) => p.connectionId === connectionId || p.id === connectionId,
+        ) ||
+        invites.find(
+          (i) => i.connectionId === connectionId || i.id === connectionId,
+        );
       if (accepted) {
         setMyConnections((prev) => [
           ...prev,
@@ -224,7 +276,11 @@ export default function UsersPage() {
         ]);
       }
       setPending((prev) => prev.filter((p) => p.connectionId !== connectionId));
-      setInvites((prev) => prev.filter((i) => i.connectionId !== connectionId && i.id !== connectionId));
+      setInvites((prev) =>
+        prev.filter(
+          (i) => i.connectionId !== connectionId && i.id !== connectionId,
+        ),
+      );
       console.log("Connection accepted");
     } catch (e) {
       console.error("Unable to accept request", e);
@@ -235,11 +291,11 @@ export default function UsersPage() {
     try {
       setRemovingConnectionId(userId);
       const connection = myConnections.find((c) => c.id === userId);
-      if (!connection || !connection.connectionId) {
+      if (!connection || !connection.id) {
         toast.error("Connection not found");
         return;
       }
-      await apiFetch(`/connections/${connection.connectionId}`, {
+      await apiFetch(`/connections/${connection.id}`, {
         method: "DELETE",
       });
       setMyConnections((prev) => prev.filter((c) => c.id !== userId));
@@ -383,7 +439,9 @@ export default function UsersPage() {
                               <Button
                                 size="sm"
                                 className="flex-1"
-                                onClick={() => handleAccept(user.connectionId ?? user.id)}
+                                onClick={() =>
+                                  handleAccept(user.connectionId ?? user.id)
+                                }
                               >
                                 Accept
                               </Button>
@@ -391,7 +449,12 @@ export default function UsersPage() {
                                 variant="outline"
                                 size="sm"
                                 className="flex-1 bg-transparent"
-                                onClick={() => handleReject(user.connectionId ?? user.id, false)}
+                                onClick={() =>
+                                  handleReject(
+                                    user.connectionId ?? user.id,
+                                    false,
+                                  )
+                                }
                               >
                                 Ignore
                               </Button>
@@ -542,7 +605,9 @@ export default function UsersPage() {
                           onClick={() => handleRemoveConnection(user.id)}
                           disabled={removingConnectionId === user.id}
                         >
-                          {removingConnectionId === user.id ? 'Removing...' : 'Remove'}
+                          {removingConnectionId === user.id
+                            ? "Removing..."
+                            : "Remove"}
                         </Button>
                       </div>
                     </div>
@@ -603,11 +668,27 @@ export default function UsersPage() {
                       </div>
                     </div>
 
-                    <div className="px-4 flex gap-2 items-center justify-center">
-                      <Clock className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground">
+                    <div className="px-4 flex gap-2">
+                      
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 bg-transparent"
+                      >
+                        <Clock className="h-3.5 w-3.5 mr-1.5" />
                         Request Pending
-                      </span>
+                      </Button>
+
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 bg-transparent text-red-600 hover:bg-red-600 hover:text-white transition-colors"
+                        onClick={() =>
+                          handleReject(user.connectionId ?? user.id, false)
+                        }
+                      >
+                        Cancel
+                      </Button>
                     </div>
                   </div>
                 </Card>
