@@ -394,7 +394,7 @@ export default function UsersPage() {
                       {invites.map((user) => (
                         <Card
                           key={user.id}
-                          className="overflow-hidden relative group hover:shadow-lg transition-shadow"
+                          className="overflow-hidden relative group hover:shadow-lg transition-shadow h-[400px] flex flex-col"
                         >
                           <button
                             onClick={() => handleRemove(user.id, "invitation")}
@@ -402,7 +402,6 @@ export default function UsersPage() {
                           >
                             <X className="h-4 w-4 text-foreground" />
                           </button>
-
                           <div className="h-24 w-full overflow-hidden bg-gradient-to-br from-primary/20 to-accent/20">
                             <img
                               src={user.banner || "/placeholder.svg"}
@@ -410,35 +409,48 @@ export default function UsersPage() {
                               className="h-full w-full object-cover"
                             />
                           </div>
-
-                          <div className="relative pb-6">
-                            <div className="flex justify-center -mt-12 mb-3">
-                              <Avatar className="h-24 w-24 ring-4 ring-card">
-                                <AvatarImage
-                                  src={user.avatar || "/placeholder.svg"}
-                                />
-                                <AvatarFallback className="text-lg">
-                                  {user.name.charAt(0)}
-                                </AvatarFallback>
-                              </Avatar>
+                          <div className="flex-1 flex flex-col justify-between">
+                            <div>
+                              <div className="flex justify-center -mt-12 mb-3">
+                                <div
+                                  className="cursor-pointer"
+                                  onClick={() =>
+                                    router.push(`/profile/${user.id}`)
+                                  }
+                                  title="View Profile"
+                                >
+                                  <Avatar className="h-24 w-24 ring-4 ring-card">
+                                    <AvatarImage
+                                      src={user.avatar || "/placeholder.svg"}
+                                    />
+                                    <AvatarFallback className="text-lg">
+                                      {user.name.charAt(0)}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                </div>
+                              </div>
+                              <div className="text-center px-4 mb-2">
+                                <h3
+                                  className="font-semibold text-lg text-foreground mb-1 truncate cursor-pointer hover:underline"
+                                  onClick={() =>
+                                    router.push(`/profile/${user.id}`)
+                                  }
+                                  title="View Profile"
+                                >
+                                  {user.name}
+                                </h3>
+                                <p className="text-sm text-primary font-medium truncate">
+                                  {user.title}
+                                </p>
+                                <p className="text-xs text-muted-foreground mt-1 truncate">
+                                  {user.company}
+                                </p>
+                              </div>
                             </div>
-
-                            <div className="text-center px-4 mb-6">
-                              <h3 className="font-semibold text-lg text-foreground mb-1">
-                                {user.name}
-                              </h3>
-                              <p className="text-sm text-primary font-medium">
-                                {user.title}
-                              </p>
-                              <p className="text-xs text-muted-foreground mt-1">
-                                {user.company}
-                              </p>
-                            </div>
-
-                            <div className="px-4 flex gap-2">
+                            <div className="px-4 flex gap-2 mb-4">
                               <Button
                                 size="sm"
-                                className="flex-1"
+                                className="flex-1 cursor-pointer"
                                 onClick={() =>
                                   handleAccept(user.connectionId ?? user.id)
                                 }
@@ -448,7 +460,7 @@ export default function UsersPage() {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className="flex-1 bg-transparent"
+                                className="flex-1 bg-transparent cursor-pointer"
                                 onClick={() =>
                                   handleReject(
                                     user.connectionId ?? user.id,
@@ -478,7 +490,7 @@ export default function UsersPage() {
                 {suggested.map((user) => (
                   <Card
                     key={user.id}
-                    className="overflow-hidden relative group hover:shadow-lg transition-shadow"
+                    className="overflow-hidden relative group hover:shadow-lg transition-shadow h-[400px] flex flex-col"
                   >
                     <button
                       onClick={() => handleRemove(user.id, "suggested")}
@@ -486,7 +498,6 @@ export default function UsersPage() {
                     >
                       <X className="h-4 w-4 text-foreground" />
                     </button>
-
                     <div className="h-24 w-full overflow-hidden bg-gradient-to-br from-primary/20 to-accent/20">
                       <img
                         src={user.banner || "/placeholder.svg"}
@@ -494,35 +505,44 @@ export default function UsersPage() {
                         className="h-full w-full object-cover"
                       />
                     </div>
-
-                    <div className="relative pb-6">
-                      <div className="flex justify-center -mt-12 mb-3">
-                        <Avatar className="h-24 w-24 ring-4 ring-card">
-                          <AvatarImage
-                            src={user.avatar || "/placeholder.svg"}
-                          />
-                          <AvatarFallback className="text-lg">
-                            {user.name.charAt(0)}
-                          </AvatarFallback>
-                        </Avatar>
+                    <div className="flex-1 flex flex-col justify-between">
+                      <div>
+                        <div className="flex justify-center -mt-12 mb-3">
+                          <div
+                            className="cursor-pointer"
+                            onClick={() => router.push(`/profile/${user.id}`)}
+                            title="View Profile"
+                          >
+                            <Avatar className="h-24 w-24 ring-4 ring-card">
+                              <AvatarImage
+                                src={user.avatar || "/placeholder.svg"}
+                              />
+                              <AvatarFallback className="text-lg">
+                                {user.name.charAt(0)}
+                              </AvatarFallback>
+                            </Avatar>
+                          </div>
+                        </div>
+                        <div className="text-center px-4 mb-2">
+                          <h3
+                            className="font-semibold text-lg text-foreground mb-1 truncate cursor-pointer hover:underline"
+                            onClick={() => router.push(`/profile/${user.id}`)}
+                            title="View Profile"
+                          >
+                            {user.name}
+                          </h3>
+                          <p className="text-sm text-primary font-medium truncate">
+                            {user.title}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1 truncate">
+                            {user.company}
+                          </p>
+                        </div>
                       </div>
-
-                      <div className="text-center px-4 mb-6">
-                        <h3 className="font-semibold text-lg text-foreground mb-1">
-                          {user.name}
-                        </h3>
-                        <p className="text-sm text-primary font-medium">
-                          {user.title}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {user.company}
-                        </p>
-                      </div>
-
-                      <div className="px-4 flex gap-2">
+                      <div className="px-4 flex gap-2 mb-4">
                         <Button
                           size="sm"
-                          className="flex-1"
+                          className="flex-1 cursor-pointer"
                           onClick={() => handleConnect(user.id)}
                         >
                           <UserPlus className="h-3.5 w-3.5 mr-1.5" />
@@ -541,7 +561,7 @@ export default function UsersPage() {
               {myConnections.map((user) => (
                 <Card
                   key={user.id}
-                  className="overflow-hidden relative group hover:shadow-lg transition-shadow"
+                  className="overflow-hidden relative group hover:shadow-lg transition-shadow h-[400px] flex flex-col"
                 >
                   <div className="h-24 w-full overflow-hidden bg-gradient-to-br from-primary/20 to-accent/20">
                     <img
@@ -550,66 +570,69 @@ export default function UsersPage() {
                       className="h-full w-full object-cover"
                     />
                   </div>
-
-                  <div className="relative pb-6">
-                    <div className="flex justify-center -mt-12 mb-3">
-                      <Avatar className="h-24 w-24 ring-4 ring-card">
-                        <AvatarImage src={user.avatar || "/placeholder.svg"} />
-                        <AvatarFallback className="text-lg">
-                          {user.name.charAt(0)}
-                        </AvatarFallback>
-                      </Avatar>
-                    </div>
-
-                    <div className="text-center px-4 mb-4">
-                      <h3 className="font-semibold text-lg text-foreground mb-1">
-                        {user.name}
-                      </h3>
-                      <p className="text-sm text-primary font-medium">
-                        {user.title}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {user.company}
-                      </p>
-                    </div>
-
-                    <div className="px-4 mb-4">
-                      <div className="flex flex-wrap gap-1 justify-center">
-                        {user.skills.slice(0, 3).map((skill) => (
-                          <Badge
-                            key={skill}
-                            variant="secondary"
-                            className="text-xs"
-                          >
-                            {skill}
-                          </Badge>
-                        ))}
+                  <div className="flex-1 flex flex-col justify-between">
+                    <div>
+                      <div className="flex justify-center -mt-12 mb-3">
+                        <div
+                          className="cursor-pointer"
+                          onClick={() => router.push(`/profile/${user.id}`)}
+                          title="View Profile"
+                        >
+                          <Avatar className="h-24 w-24 ring-4 ring-card">
+                            <AvatarImage
+                              src={user.avatar || "/placeholder.svg"}
+                            />
+                            <AvatarFallback className="text-lg">
+                              {user.name.charAt(0)}
+                            </AvatarFallback>
+                          </Avatar>
+                        </div>
+                      </div>
+                      <div className="text-center px-4 mb-4">
+                        <h3 className="font-semibold text-lg text-foreground mb-1 truncate">
+                          {user.name}
+                        </h3>
+                        <p className="text-sm text-primary font-medium truncate">
+                          {user.title}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1 truncate">
+                          {user.company}
+                        </p>
+                      </div>
+                      <div className="px-4 mb-4">
+                        <div className="flex flex-wrap gap-1 justify-center">
+                          {user.skills.slice(0, 3).map((skill) => (
+                            <Badge
+                              key={skill}
+                              variant="secondary"
+                              className="text-xs"
+                            >
+                              {skill}
+                            </Badge>
+                          ))}
+                        </div>
                       </div>
                     </div>
-
-                    <div className="px-4">
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="flex-1 bg-transparent"
-                          onClick={() => handleMessage(user)}
-                        >
-                          <MessageSquare className="h-3.5 w-3.5 mr-1.5" />
-                          Message
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="flex-1 bg-transparent text-destructive"
-                          onClick={() => handleRemoveConnection(user.id)}
-                          disabled={removingConnectionId === user.id}
-                        >
-                          {removingConnectionId === user.id
-                            ? "Removing..."
-                            : "Remove"}
-                        </Button>
-                      </div>
+                    <div className="px-4 flex gap-2 mb-4">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 bg-transparent cursor-pointer"
+                      >
+                        <MessageSquare className="h-3.5 w-3.5 mr-1.5" />
+                        Message
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 bg-transparent text-destructive cursor-pointer"
+                        onClick={() => handleRemoveConnection(user.id)}
+                        disabled={removingConnectionId === user.id}
+                      >
+                        {removingConnectionId === user.id
+                          ? "Removing..."
+                          : "Remove"}
+                      </Button>
                     </div>
                   </div>
                 </Card>
@@ -622,7 +645,7 @@ export default function UsersPage() {
               {pending.map((user) => (
                 <Card
                   key={user.id}
-                  className="overflow-hidden relative group hover:shadow-lg transition-shadow"
+                  className="overflow-hidden relative group hover:shadow-lg transition-shadow h-[400px] flex flex-col"
                 >
                   <div className="h-24 w-full overflow-hidden bg-gradient-to-br from-primary/20 to-accent/20">
                     <img
@@ -631,58 +654,66 @@ export default function UsersPage() {
                       className="h-full w-full object-cover"
                     />
                   </div>
-
-                  <div className="relative pb-6">
-                    <div className="flex justify-center -mt-12 mb-3">
-                      <Avatar className="h-24 w-24 ring-4 ring-card">
-                        <AvatarImage src={user.avatar || "/placeholder.svg"} />
-                        <AvatarFallback className="text-lg">
-                          {user.name.charAt(0)}
-                        </AvatarFallback>
-                      </Avatar>
-                    </div>
-
-                    <div className="text-center px-4 mb-4">
-                      <h3 className="font-semibold text-lg text-foreground mb-1">
-                        {user.name}
-                      </h3>
-                      <p className="text-sm text-primary font-medium">
-                        {user.title}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {user.company}
-                      </p>
-                    </div>
-
-                    <div className="px-4 mb-4">
-                      <div className="flex flex-wrap gap-1 justify-center">
-                        {user.skills.slice(0, 3).map((skill) => (
-                          <Badge
-                            key={skill}
-                            variant="secondary"
-                            className="text-xs"
-                          >
-                            {skill}
-                          </Badge>
-                        ))}
+                  <div className="flex-1 flex flex-col justify-between">
+                    <div>
+                      <div className="flex justify-center -mt-12 mb-3">
+                        <div
+                          className="cursor-pointer"
+                          onClick={() => router.push(`/profile/${user.id}`)}
+                          title="View Profile"
+                        >
+                          <Avatar className="h-24 w-24 ring-4 ring-card">
+                            <AvatarImage
+                              src={user.avatar || "/placeholder.svg"}
+                            />
+                            <AvatarFallback className="text-lg">
+                              {user.name.charAt(0)}
+                            </AvatarFallback>
+                          </Avatar>
+                        </div>
+                      </div>
+                      <div className="text-center px-4 mb-2">
+                        <h3
+                          className="font-semibold text-lg text-foreground mb-1 truncate cursor-pointer hover:underline"
+                          onClick={() => router.push(`/profile/${user.id}`)}
+                          title="View Profile"
+                        >
+                          {user.name}
+                        </h3>
+                        <p className="text-sm text-primary font-medium truncate">
+                          {user.title}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1 truncate">
+                          {user.company}
+                        </p>
+                      </div>
+                      <div className="px-4 mb-4">
+                        <div className="flex flex-wrap gap-1 justify-center">
+                          {user.skills.slice(0, 3).map((skill) => (
+                            <Badge
+                              key={skill}
+                              variant="secondary"
+                              className="text-xs"
+                            >
+                              {skill}
+                            </Badge>
+                          ))}
+                        </div>
                       </div>
                     </div>
-
-                    <div className="px-4 flex gap-2">
-                      
+                    <div className="px-4 flex gap-2 mb-4">
                       <Button
                         variant="outline"
                         size="sm"
-                        className="flex-1 bg-transparent"
+                        className="flex-1 bg-transparent cursor-pointer"
                       >
                         <Clock className="h-3.5 w-3.5 mr-1.5" />
                         Request Pending
                       </Button>
-
                       <Button
                         variant="outline"
                         size="sm"
-                        className="flex-1 bg-transparent text-red-600 hover:bg-red-600 hover:text-white transition-colors"
+                        className="flex-1 bg-transparent text-red-600 hover:bg-red-600 hover:text-white transition-colors cursor-pointer"
                         onClick={() =>
                           handleReject(user.connectionId ?? user.id, false)
                         }

@@ -1,15 +1,26 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import Link from 'next/link';
-import Image from 'next/image';
-import { useRouter } from 'next/navigation';
-import { Search as SearchIcon, Bell, Plus, Menu, User, Settings, LogOut, MessageSquare, UserPlus, Briefcase } from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import { SidebarTrigger, useSidebar } from '@/components/ui/sidebar';
-import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
+import {
+  Search as SearchIcon,
+  Bell,
+  Plus,
+  Menu,
+  User,
+  Settings,
+  LogOut,
+  MessageSquare,
+  UserPlus,
+  Briefcase,
+} from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,11 +28,15 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { signOut } from '@/lib/auth';
-import { getProfile, loadProfileFromApi, clearProfile } from '@/lib/profileStore';
-import { getUserConversations, getSupabaseClient } from '@/lib/supabase';
-import { ThemeToggle } from '@/components/theme-toggle';
+} from "@/components/ui/dropdown-menu";
+import { signOut } from "@/lib/auth";
+import {
+  getProfile,
+  loadProfileFromApi,
+  clearProfile,
+} from "@/lib/profileStore";
+import { getUserConversations, getSupabaseClient } from "@/lib/supabase";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export function Header() {
   const [currentUser, setCurrentUser] = useState<any>(() => getProfile());
@@ -29,22 +44,24 @@ export function Header() {
   const router = useRouter();
   const [recentMsgsState, setRecentMsgsState] = useState<any[]>([]);
   const [notificationsList, setNotificationsList] = useState<any[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const unreadNotifCount = notificationsList.filter(n => !n.read).length;
-  const unreadMsgCount = recentMsgsState.filter(m => !m.read).length;
+  const [searchQuery, setSearchQuery] = useState("");
+  const unreadNotifCount = notificationsList.filter((n) => !n.read).length;
+  const unreadMsgCount = recentMsgsState.filter((m) => !m.read).length;
   const unreadMsgs = recentMsgsState.filter((m) => !m.read);
 
   const handleSearch = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && searchQuery.trim()) {
+    if (e.key === "Enter" && searchQuery.trim()) {
       router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
     }
   };
 
   useEffect(() => {
     if (!currentUser) {
-      loadProfileFromApi().then((p) => {
-        if (p) setCurrentUser(p);
-      }).catch(() => null);
+      loadProfileFromApi()
+        .then((p) => {
+          if (p) setCurrentUser(p);
+        })
+        .catch(() => null);
     }
   }, []);
 
@@ -58,18 +75,23 @@ export function Header() {
       const client = getSupabaseClient();
       const normalize = (row: any) => ({
         id: row.id,
-        type: row.type || row.notification_type || 'notification',
-        user: row.user || row.source_name || row.actor || 'System',
-        message: row.message || row.text || row.body || '',
-        time: row.created_at || row.time || '',
+        type: row.type || row.notification_type || "notification",
+        user: row.user || row.source_name || row.actor || "System",
+        message: row.message || row.text || row.body || "",
+        time: row.created_at || row.time || "",
         read: Boolean(row.read),
       });
 
       chan = client
         .channel(`public:notifications:user:${userId}`)
         .on(
-          'postgres_changes',
-          { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "notifications",
+            filter: `user_id=eq.${userId}`,
+          },
           (payload: any) => {
             try {
               const row = payload.new as any;
@@ -78,32 +100,46 @@ export function Header() {
             } catch (err) {
               // ignore
             }
-          }
+          },
         )
         .on(
-          'postgres_changes',
-          { event: 'UPDATE', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "notifications",
+            filter: `user_id=eq.${userId}`,
+          },
           (payload: any) => {
             try {
               const row = payload.new as any;
               const item = normalize(row);
-              setNotificationsList((prev) => prev.map((n) => (n.id === item.id ? item : n)));
+              setNotificationsList((prev) =>
+                prev.map((n) => (n.id === item.id ? item : n)),
+              );
             } catch (err) {
               // ignore
             }
-          }
+          },
         )
         .on(
-          'postgres_changes',
-          { event: 'DELETE', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
+          "postgres_changes",
+          {
+            event: "DELETE",
+            schema: "public",
+            table: "notifications",
+            filter: `user_id=eq.${userId}`,
+          },
           (payload: any) => {
             try {
               const oldRow = payload.old as any;
-              setNotificationsList((prev) => prev.filter((n) => n.id !== oldRow.id));
+              setNotificationsList((prev) =>
+                prev.filter((n) => n.id !== oldRow.id),
+              );
             } catch (err) {
               // ignore
             }
-          }
+          },
         )
         .subscribe();
     } catch (e) {
@@ -113,7 +149,7 @@ export function Header() {
     return () => {
       try {
         chan?.unsubscribe();
-      } catch (e) { }
+      } catch (e) {}
     };
   }, []);
 
@@ -126,17 +162,16 @@ export function Header() {
         if (!profile) return;
         const userId = profile.user_id;
         const data = await getUserConversations(userId);
-        if (Array.isArray(data)) {
-          const mapped = data.slice(0, 10).map((c: any) => ({
-            id: c.id,
-            user: c.name || c.other_name || `Conversation ${c.id}`,
-            avatar: c.avatar || c.user?.avatar || '/placeholder.svg',
-            message: c.last_message ?? c.lastMessage ?? c.preview ?? '',
-            time: c.timestamp ?? c.last_message_at ?? '',
-            read: !Boolean(c.unread || c.unread_count || c.unreadMessages),
-          }));
-          setRecentMsgsState(mapped);
-        }
+        const arr = Array.isArray(data) ? data : [];
+        const mapped = arr.slice(0, 10).map((c: any) => ({
+          id: c.id,
+          user: c.name || c.other_name || `Conversation ${c.id}`,
+          avatar: c.avatar || c.user?.avatar || "/placeholder.svg",
+          message: c.last_message ?? c.lastMessage ?? c.preview ?? "",
+          time: c.timestamp ?? c.last_message_at ?? "",
+          read: !Boolean(c.unread || c.unread_count || c.unreadMessages),
+        }));
+        setRecentMsgsState(mapped);
       } catch (e) {
         // ignore
       }
@@ -147,32 +182,38 @@ export function Header() {
     try {
       const client = getSupabaseClient();
       channel = client
-        .channel('header-realtime')
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload: any) => {
-          const newRow = payload.new;
-          const convId = Number(newRow?.conversation_id);
-          if (!convId) return;
-          setRecentMsgsState((prev) => {
-            const idx = prev.findIndex((p) => Number(p.id) === convId);
-            const updatedItem = {
-              id: convId,
-              user: newRow.sender_id || `Conversation ${convId}`,
-              avatar: prev[idx]?.avatar || '/placeholder.svg',
-              message: newRow.content,
-              time: newRow.created_at ?? '',
-              read: false,
-            };
-            if (idx >= 0) {
-              const copy = [...prev];
-              copy[idx] = updatedItem;
-              // move to front
-              copy.unshift(copy.splice(idx, 1)[0]);
-              return copy;
-            }
-            // prepend new conversation entry
-            return [updatedItem, ...prev].slice(0, 10);
-          });
-        })
+        .channel("header-realtime")
+        .on(
+          "postgres_changes",
+          { event: "INSERT", schema: "public", table: "messages" },
+          (payload: any) => {
+            const newRow = payload.new;
+            const convId = Number(newRow?.conversation_id);
+            if (!convId) return;
+            setRecentMsgsState((prev) => {
+              const idx = prev.findIndex((p) => Number(p.id) === convId);
+              const updatedItem = {
+                id: convId,
+                user: newRow.sender_id || `Conversation ${convId}`,
+                avatar: prev[idx]?.avatar || "/placeholder.svg",
+                message: newRow.content,
+                time: newRow.created_at
+                  ? new Date(newRow.created_at).toLocaleString()
+                  : "",
+                read: false,
+              };
+              if (idx >= 0) {
+                const copy = [...prev];
+                copy[idx] = updatedItem;
+                // move to front
+                copy.unshift(copy.splice(idx, 1)[0]);
+                return copy;
+              }
+              // prepend new conversation entry
+              return [updatedItem, ...prev].slice(0, 10);
+            });
+          },
+        )
         .subscribe();
     } catch (e) {
       // ignore realtime if not configured
@@ -181,7 +222,7 @@ export function Header() {
     return () => {
       try {
         channel?.unsubscribe();
-      } catch (e) { }
+      } catch (e) {}
     };
   }, []);
 
@@ -208,9 +249,11 @@ export function Header() {
 
   const handleSignOut = () => {
     // clear in-memory profile and auth tokens
-    try { clearProfile(); } catch (e) { }
+    try {
+      clearProfile();
+    } catch (e) {}
     signOut();
-    router.push('/signin');
+    router.push("/signin");
   };
 
   return (
@@ -231,7 +274,9 @@ export function Header() {
               className="w-8 h-8"
             />
             {!open && (
-              <span className="font-semibold text-lg text-foreground">AIMPLOY</span>
+              <span className="font-semibold text-lg text-foreground">
+                AIMPLOY
+              </span>
             )}
           </div>
 
@@ -252,8 +297,14 @@ export function Header() {
         <div className="flex items-center gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="relative h-10 w-10 rounded-xl hover:bg-secondary">
-                <MessageSquare className="h-5 w-5" />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="relative h-10 w-10 rounded-xl group transition-colors"
+              >
+                <span className="flex items-center justify-center h-full w-full rounded-xl transition-colors group-hover:bg-teal-600 group-active:bg-teal-700">
+                  <MessageSquare className="h-5 w-5 text-muted-foreground transition-colors group-hover:text-white group-active:text-white" />
+                </span>
                 {unreadMsgCount > 0 && (
                   <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-destructive ring-2 ring-card" />
                 )}
@@ -271,24 +322,33 @@ export function Header() {
               <DropdownMenuSeparator />
               <div className="max-h-[400px] overflow-y-auto">
                 {unreadMsgs.length === 0 ? (
-                  <div className="p-4 text-sm text-muted-foreground">No unread messages</div>
+                  <div className="p-4 text-sm text-muted-foreground">
+                    No unread messages
+                  </div>
                 ) : (
                   unreadMsgs.map((msg) => (
                     <DropdownMenuItem
                       key={msg.id}
-                      className={`flex items-start gap-3 p-3 cursor-pointer ${!msg.read ? 'bg-primary/5' : ''
-                        }`}
+                      className={`flex items-start gap-3 p-3 cursor-pointer ${
+                        !msg.read ? "bg-primary/5" : ""
+                      }`}
                       onClick={() => {
                         try {
-                          if (msg.id) sessionStorage.setItem('messageUserId', String(msg.id));
-                          sessionStorage.setItem('messageUser', msg.user || '');
-                        } catch { }
-                        router.push('/messages');
+                          if (msg.id)
+                            sessionStorage.setItem(
+                              "messageUserId",
+                              String(msg.id),
+                            );
+                          sessionStorage.setItem("messageUser", msg.user || "");
+                        } catch {}
+                        router.push("/messages");
                       }}
                     >
                       <Avatar className="h-10 w-10 flex-shrink-0">
                         <AvatarImage src={msg.avatar || "/placeholder.svg"} />
-                        <AvatarFallback>{String(msg.user || '').charAt(0)}</AvatarFallback>
+                        <AvatarFallback>
+                          {String(msg.user || "").charAt(0)}
+                        </AvatarFallback>
                       </Avatar>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium">{msg.user}</p>
@@ -304,7 +364,10 @@ export function Header() {
               </div>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
-                <Link href="/messages" className="flex items-center justify-center cursor-pointer font-medium text-primary">
+                <Link
+                  href="/messages"
+                  className="flex items-center justify-center cursor-pointer font-medium text-primary"
+                >
                   View all messages
                 </Link>
               </DropdownMenuItem>
@@ -313,8 +376,14 @@ export function Header() {
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="relative h-10 w-10 rounded-xl hover:bg-accent/10 hover:text-accent">
-                <Bell className="h-5 w-5" />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="relative h-10 w-10 rounded-xl group transition-colors"
+              >
+                <span className="flex items-center justify-center h-full w-full rounded-xl transition-colors group-hover:bg-teal-600 group-active:bg-teal-700">
+                  <Bell className="h-5 w-5 text-muted-foreground transition-colors group-hover:text-white group-active:text-white" />
+                </span>
                 {unreadNotifCount > 0 && (
                   <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-destructive ring-2 ring-card" />
                 )}
@@ -332,16 +401,27 @@ export function Header() {
               <DropdownMenuSeparator />
               <div className="max-h-[400px] overflow-y-auto">
                 {notificationsList.length === 0 ? (
-                  <div className="p-4 text-sm text-muted-foreground">No new notifications</div>
+                  <div className="p-4 text-sm text-muted-foreground">
+                    No new notifications
+                  </div>
                 ) : (
                   notificationsList.map((notif) => {
-                    const Icon = notif.icon ?? (notif.type === 'application' ? Briefcase : notif.type === 'message' ? MessageSquare : notif.type === 'connection' ? UserPlus : Bell);
+                    const Icon =
+                      notif.icon ??
+                      (notif.type === "application"
+                        ? Briefcase
+                        : notif.type === "message"
+                          ? MessageSquare
+                          : notif.type === "connection"
+                            ? UserPlus
+                            : Bell);
                     return (
                       <DropdownMenuItem
                         key={notif.id}
-                        className={`flex items-start gap-3 p-3 cursor-pointer ${!notif.read ? 'bg-primary/5' : ''
-                          }`}
-                        onClick={() => router.push('/notifications')}
+                        className={`flex items-start gap-3 p-3 cursor-pointer ${
+                          !notif.read ? "bg-primary/5" : ""
+                        }`}
+                        onClick={() => router.push("/notifications")}
                       >
                         <div className="mt-0.5">
                           <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
@@ -363,7 +443,10 @@ export function Header() {
               </div>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
-                <Link href="/notifications" className="flex items-center justify-center cursor-pointer font-medium text-primary">
+                <Link
+                  href="/notifications"
+                  className="flex items-center justify-center cursor-pointer font-medium text-primary"
+                >
                   View all notifications
                 </Link>
               </DropdownMenuItem>
@@ -376,9 +459,21 @@ export function Header() {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="h-9 w-9 rounded-full p-0">
                 <Avatar className="h-9 w-9 ring-2 ring-border hover:ring-primary/50 transition-all cursor-pointer">
-                  <AvatarImage src={currentUser?.profile_image_url || currentUser?.avatar || currentUser?.other_avatar || "/placeholder.svg"} />
+                  <AvatarImage
+                    src={
+                      currentUser?.profile_image_url ||
+                      currentUser?.avatar ||
+                      currentUser?.other_avatar ||
+                      "/placeholder.svg"
+                    }
+                  />
                   <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
-                    {(currentUser?.full_name || currentUser?.name || currentUser?.user?.full_name || 'U')?.charAt(0) || 'U'}
+                    {(
+                      currentUser?.full_name ||
+                      currentUser?.name ||
+                      currentUser?.user?.full_name ||
+                      "U"
+                    )?.charAt(0) || "U"}
                   </AvatarFallback>
                 </Avatar>
               </Button>
@@ -386,25 +481,43 @@ export function Header() {
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel>
                 <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium">{currentUser?.full_name || currentUser?.name || currentUser?.user?.full_name || 'Guest User'}</p>
-                  <p className="text-xs text-muted-foreground">{currentUser?.email || currentUser?.user?.email || 'No email'}</p>
+                  <p className="text-sm font-medium">
+                    {currentUser?.full_name ||
+                      currentUser?.name ||
+                      currentUser?.user?.full_name ||
+                      "Guest User"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {currentUser?.email ||
+                      currentUser?.user?.email ||
+                      "No email"}
+                  </p>
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
-                <Link href="/profile" className="flex items-center cursor-pointer">
+                <Link
+                  href="/profile"
+                  className="flex items-center cursor-pointer"
+                >
                   <User className="mr-2 h-4 w-4" />
                   <span>View Profile</span>
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href="/settings" className="flex items-center cursor-pointer">
+                <Link
+                  href="/settings"
+                  className="flex items-center cursor-pointer"
+                >
                   <Settings className="mr-2 h-4 w-4" />
                   <span>Settings</span>
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive cursor-pointer">
+              <DropdownMenuItem
+                onClick={handleSignOut}
+                className="text-destructive focus:text-destructive cursor-pointer"
+              >
                 <LogOut className="mr-2 h-4 w-4" />
                 <span>Sign Out</span>
               </DropdownMenuItem>
