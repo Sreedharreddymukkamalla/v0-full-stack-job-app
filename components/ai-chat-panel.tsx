@@ -70,9 +70,16 @@ export function ChatPanel({ conversationId, onConversationChange }: ChatPanelPro
     } else {
       // CSV format
       const headers = ['Role', 'Content', 'Timestamp']
-      const rows = messages.map((msg) => {
-        const text =
-          msg.parts?.find((p) => p.type === 'text')?.text || msg.content || ''
+      const rows = messages.map((msg: any) => {
+        let text = ''
+        if (msg.parts && Array.isArray(msg.parts)) {
+          text = msg.parts
+            .filter((p: any) => p.type === 'text')
+            .map((p: any) => p.text || '')
+            .join('')
+        } else if (msg.content) {
+          text = typeof msg.content === 'string' ? msg.content : ''
+        }
         return [msg.role, `"${text.replace(/"/g, '""')}"`, new Date().toISOString()]
       })
       content = [headers, ...rows].map((row) => row.join(',')).join('\n')

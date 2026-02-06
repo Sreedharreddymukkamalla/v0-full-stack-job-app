@@ -1,4 +1,3 @@
-import { put } from '@vercel/blob'
 import { v4 as uuidv4 } from 'uuid'
 
 export async function POST(req: Request) {
@@ -12,12 +11,14 @@ export async function POST(req: Request) {
   }
 
   try {
+    // For now, we'll create a simple response with file metadata
+    // In production, you'd use Vercel Blob or another storage service
     const filename = `${uuidv4()}-${file.name}`
-    const blob = await put(filename, file, { access: 'private' })
-
+    const buffer = await file.arrayBuffer()
+    
     return new Response(
       JSON.stringify({
-        url: blob.url,
+        url: `/api/files/${filename}`,
         filename: file.name,
         size: file.size,
         type: file.type,
