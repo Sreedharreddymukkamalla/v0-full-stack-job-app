@@ -1,23 +1,23 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useMemo, useRef } from 'react';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { useState, useEffect, useMemo, useRef } from "react";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { 
-  MapPin, 
-  DollarSign, 
-  Bookmark, 
-  Search, 
+} from "@/components/ui/select";
+import {
+  MapPin,
+  DollarSign,
+  Bookmark,
+  Search,
   SlidersHorizontal,
   Building2,
   Clock,
@@ -25,10 +25,17 @@ import {
   Zap,
   ExternalLink,
   X,
-} from 'lucide-react';
+} from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
+import { Check } from "lucide-react";
 
-import { apiFetch } from '@/lib/api';
-import DOMPurify from 'dompurify';
+import { apiFetch } from "@/lib/api";
+import DOMPurify from "dompurify";
 
 type Job = {
   id: number;
@@ -49,20 +56,21 @@ type Job = {
   description?: string | null;
 };
 
-const filterTabs = ['All Jobs', 'Full-time', 'Remote', 'Contract', 'Part-time'];
+const filterTabs = ["All Jobs", "Full-time", "Remote", "Contract", "Part-time"];
 
 export default function JobsPage() {
-  const [activeFilter, setActiveFilter] = useState('All Jobs');
+  const [activeFilter, setActiveFilter] = useState("All Jobs");
   const [savedJobs, setSavedJobs] = useState<Set<number>>(new Set());
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [showFilters, setShowFilters] = useState(false);
-  const [experienceLevel, setExperienceLevel] = useState('all');
-  const [locationFilter, setLocationFilter] = useState('');
-  const [companyFilter, setCompanyFilter] = useState('');
+  const [experienceLevels, setExperienceLevels] = useState<string[]>([]);
+  const [locationFilter, setLocationFilter] = useState("");
+  const [companyFilter, setCompanyFilter] = useState("");
+  const [selectedJobTypes, setSelectedJobTypes] = useState<string[]>([]);
   const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [dateFilter, setDateFilter] = useState('all');
-  const [sortBy, setSortBy] = useState('relevant');
+  const [dateFilter, setDateFilter] = useState("all");
+  const [sortBy, setSortBy] = useState("relevant");
   const jobsPerPage = 10;
   const apiPageSize = 150;
 
@@ -77,7 +85,10 @@ export default function JobsPage() {
       if (days <= 0) return "Today";
       if (days === 1) return "1 day ago";
       if (days < 7) return `${days} days ago`;
-      return new Intl.DateTimeFormat("en", { month: "short", day: "numeric" }).format(new Date(iso));
+      return new Intl.DateTimeFormat("en", {
+        month: "short",
+        day: "numeric",
+      }).format(new Date(iso));
     } catch {
       return "Recently";
     }
@@ -105,25 +116,38 @@ export default function JobsPage() {
   }
 
   function extractLevel(r: any) {
-    const source = (r.level || r.seniority || r.experience || r.title || r.description || '').toString().toLowerCase();
-    if (/\b(entry|junior|jr)\b/.test(source)) return 'entry';
-    if (/\b(mid|intermediate|associate)\b/.test(source)) return 'mid';
-    if (/\b(principal|principal|lead|head|director)\b/.test(source)) return 'lead';
-    if (/\b(senior|sr)\b/.test(source)) return 'senior';
+    const source = (
+      r.level ||
+      r.seniority ||
+      r.experience ||
+      r.title ||
+      r.description ||
+      ""
+    )
+      .toString()
+      .toLowerCase();
+    if (/\b(entry|junior|jr)\b/.test(source)) return "Entry Level";
+    if (/\b(mid|intermediate|associate)\b/.test(source)) return "Mid Level";
+    if (/\b(principal|principal|lead|head|director)\b/.test(source))
+      return "Lead/Principal";
+    if (/\b(senior|sr)\b/.test(source)) return "Senior";
     // fallback: if the raw value already matches our keys
-    if (['entry', 'mid', 'senior', 'lead'].includes(source)) return source;
-    return '';
+    if (["entry", "mid", "senior", "lead"].includes(source)) return source;
+    return "";
   }
 
   function mapRemoteJob(r: any): Job {
     const title = r.title || r.job_title || r.external_title || "";
     const company = r.company_name || r.company || r.companyName || "Unknown";
-    const location = r.location || r.city || r.office || (r.remote ? "Remote" : "");
+    const location =
+      r.location || r.city || r.office || (r.remote ? "Remote" : "");
     const posted = timeAgo(r.posted_at || r.created_at || null);
-    const salary = extractSalary(r.description) || (r.salary_range || r.salary || undefined);
+    const salary =
+      extractSalary(r.description) || r.salary_range || r.salary || undefined;
     const logo = (company || "?").charAt(0).toUpperCase();
     const logoColor = pickGradient(company || String(r.id || Math.random()));
-    const detectedLevel = extractLevel(r) || (r.level ? String(r.level).toLowerCase() : '');
+    const detectedLevel =
+      extractLevel(r) || (r.level ? String(r.level).toLowerCase() : "");
     return {
       id: Number(r.id),
       title,
@@ -144,18 +168,18 @@ export default function JobsPage() {
   }
 
   function displayLevel(level?: string) {
-    if (!level) return '';
+    if (!level) return "";
     const labels: Record<string, string> = {
-      entry: 'Entry Level',
-      mid: 'Mid Level',
-      senior: 'Senior',
-      lead: 'Lead/Principal',
+      entry: "Entry Level",
+      mid: "Mid Level",
+      senior: "Senior",
+      lead: "Lead/Principal",
     };
     return labels[level] ?? level;
   }
 
   const toggleSaveJob = (jobId: number) => {
-    setSavedJobs(prev => {
+    setSavedJobs((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(jobId)) {
         newSet.delete(jobId);
@@ -170,15 +194,15 @@ export default function JobsPage() {
     try {
       setLoading(true);
       const params = new URLSearchParams();
-      if (searchQuery) params.append('q', searchQuery);
-      if (locationFilter) params.append('location', locationFilter);
+      if (searchQuery) params.append("q", searchQuery);
+      if (locationFilter) params.append("location", locationFilter);
       // include page size and page requested by the client
-      params.append('page_size', String(apiPageSize));
-      params.append('page', String(page));
-      params.append('sync', 'true');
+      params.append("page_size", String(apiPageSize));
+      params.append("page", String(page));
+      params.append("sync", "true");
 
       const chunk = await apiFetch<any[]>(
-        `/jobs${params.toString() ? `?${params.toString()}` : ''}`
+        `/jobs${params.toString() ? `?${params.toString()}` : ""}`,
       );
 
       if (Array.isArray(chunk)) setJobs(chunk.map(mapRemoteJob));
@@ -209,15 +233,32 @@ export default function JobsPage() {
   }, [searchQuery, locationFilter, sortBy, dateFilter]);
 
   const clearFilters = () => {
-    setExperienceLevel('all');
-    setLocationFilter('');
-    setCompanyFilter('');
-    setSearchQuery('');
-    setActiveFilter('All Jobs');
-    setDateFilter('all');
+    setExperienceLevels([]);
+    setSelectedJobTypes([]);
+    setLocationFilter("");
+    setCompanyFilter("");
+    setSearchQuery("");
+    setActiveFilter("All Jobs");
+    setDateFilter("all");
   };
 
-  const hasActiveFilters = experienceLevel !== 'all' || locationFilter || companyFilter;
+  const toggleJobType = (t: string) => {
+    setSelectedJobTypes((prev) =>
+      prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t],
+    );
+  };
+
+  const toggleExperienceLevel = (lvl: string) => {
+    setExperienceLevels((prev) =>
+      prev.includes(lvl) ? prev.filter((x) => x !== lvl) : [...prev, lvl],
+    );
+  };
+
+  const hasActiveFilters =
+    selectedJobTypes.length > 0 ||
+    experienceLevels.length > 0 ||
+    !!locationFilter ||
+    !!companyFilter;
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-4 space-y-4">
@@ -252,70 +293,122 @@ export default function JobsPage() {
                 className="pl-9 h-10 rounded-lg border-border/50 bg-secondary/30 focus:bg-background"
               />
             </div>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               className="h-10 rounded-lg gap-2 bg-transparent whitespace-nowrap"
               onClick={() => setShowFilters(!showFilters)}
             >
               <SlidersHorizontal className="h-4 w-4" />
               <span>More Filters</span>
-              {hasActiveFilters && experienceLevel !== 'all' && (
-                <Badge className="ml-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
-                  1
-                </Badge>
-              )}
             </Button>
           </div>
 
           {/* Advanced Filters */}
           {showFilters && (
-            <div className="pt-3 border-t border-border space-y-3">
+            <div className="pt-3 border-t border-border flex items-center gap-4">
               <div className="flex items-center gap-4">
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Experience Level</Label>
-                  <Select value={experienceLevel} onValueChange={setExperienceLevel}>
-                    <SelectTrigger className="h-10 rounded-xl w-[200px]">
-                      <SelectValue placeholder="Select level" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Levels</SelectItem>
-                      <SelectItem value="entry">Entry Level</SelectItem>
-                      <SelectItem value="mid">Mid Level</SelectItem>
-                      <SelectItem value="senior">Senior Level</SelectItem>
-                      <SelectItem value="lead">Lead/Principal</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                {hasActiveFilters && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={clearFilters}
-                    className="text-destructive hover:text-destructive hover:bg-destructive/10 mt-6"
-                  >
-                    <X className="h-4 w-4 mr-1.5" />
-                    Clear all filters
-                  </Button>
-                )}
+                <Label className="text-sm font-medium">
+                  Experience Level :
+                </Label>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="rounded-full px-4 h-8 whitespace-nowrap bg-transparent"
+                    >
+                      Select Job level :
+                      {experienceLevels.length > 0 && (
+                        <Badge className="ml-2 h-5 px-2 text-xs">
+                          {experienceLevels.length}
+                        </Badge>
+                      )}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    {[
+                      "Entry Level",
+                      "Mid Level",
+                      "Senior",
+                      "Lead/Principal",
+                    ].map((lvl) => (
+                      <DropdownMenuItem
+                        key={lvl}
+                        onClick={() => toggleExperienceLevel(lvl)}
+                        className="flex items-center justify-between"
+                      >
+                        <span>{lvl}</span>
+                        {experienceLevels.includes(lvl) && (
+                          <Check className="h-4 w-4 text-primary" />
+                        )}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+              {/* Move Date posted filter into Advanced Filters */}
+              <div className="flex items-center gap-4">
+                <Label className="text-sm font-medium">Date posted</Label>
+                <Select value={dateFilter} onValueChange={setDateFilter}>
+                  <SelectTrigger className="h-8 w-[140px] rounded-full text-sm">
+                    <SelectValue placeholder="Date posted" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Any time</SelectItem>
+                    <SelectItem value="24h">Last 24 hours</SelectItem>
+                    <SelectItem value="7d">Last 7 days</SelectItem>
+                    <SelectItem value="30d">Last 30 days</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           )}
 
           <div className="flex gap-2 mt-4 overflow-x-auto pb-1 items-center justify-between">
-            <div className="flex gap-2">
-              {filterTabs.map((tab) => (
-                <Button
-                  key={tab}
-                  variant={activeFilter === tab ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setActiveFilter(tab)}
-                  className={`rounded-full px-4 h-8 whitespace-nowrap ${
-                    activeFilter !== tab ? 'bg-transparent hover:bg-secondary' : ''
-                  }`}
-                >
-                  {tab}
-                </Button>
-              ))}
+            <div className="flex gap-2 items-center">
+              {/* Job type multiselect dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-full px-4 h-8 whitespace-nowrap bg-transparent"
+                  >
+                    Job Type
+                    {selectedJobTypes.length > 0 && (
+                      <Badge className="ml-2 h-5 px-2 text-xs">
+                        {selectedJobTypes.length}
+                      </Badge>
+                    )}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  {["Full-time", "Remote", "Contract", "Part-time"].map((t) => (
+                    <DropdownMenuItem
+                      key={t}
+                      onClick={() => toggleJobType(t)}
+                      className="flex items-center justify-between"
+                    >
+                      <span>{t}</span>
+                      {selectedJobTypes.includes(t) && (
+                        <Check className="h-4 w-4 text-primary" />
+                      )}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+              {/* Show selected types as badges */}
+              <div className="flex gap-1">
+                {selectedJobTypes.map((t) => (
+                  <Badge
+                    key={t}
+                    variant="secondary"
+                    className="rounded-full px-2 text-xs"
+                  >
+                    {t}
+                  </Badge>
+                ))}
+              </div>
             </div>
             <div className="flex gap-2 items-center">
               <Select value={sortBy} onValueChange={setSortBy}>
@@ -325,21 +418,26 @@ export default function JobsPage() {
                 <SelectContent>
                   <SelectItem value="relevant">Most Relevant</SelectItem>
                   <SelectItem value="recent">Most Recent</SelectItem>
-                  <SelectItem value="salary_high">Salary: High to Low</SelectItem>
-                  <SelectItem value="salary_low">Salary: Low to High</SelectItem>
+                  <SelectItem value="salary_high">
+                    Salary: High to Low
+                  </SelectItem>
+                  <SelectItem value="salary_low">
+                    Salary: Low to High
+                  </SelectItem>
                 </SelectContent>
               </Select>
-              <Select value={dateFilter} onValueChange={setDateFilter}>
-                <SelectTrigger className="h-8 w-[140px] rounded-full text-sm">
-                  <SelectValue placeholder="Date posted" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Any time</SelectItem>
-                  <SelectItem value="24h">Last 24 hours</SelectItem>
-                  <SelectItem value="7d">Last 7 days</SelectItem>
-                  <SelectItem value="30d">Last 30 days</SelectItem>
-                </SelectContent>
-              </Select>
+              {/* Clear filters button visible outside More Filters */}
+              {hasActiveFilters && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearFilters}
+                  className="text-destructive hover:bg-destructive/10 ml-2"
+                >
+                  <X className="h-4 w-4 mr-1.5" />
+                  Clear filters
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -353,24 +451,29 @@ export default function JobsPage() {
             .slice((currentPage - 1) * jobsPerPage, currentPage * jobsPerPage)
             .map((job) => {
               const isSaved = savedJobs.has(job.id);
-              
+
               return (
                 <Card
                   key={job.id}
                   onClick={() => setSelectedJobId(job.id)}
-                  className={`p-2 border border-border shadow-sm hover:shadow-md transition-all duration-150 cursor-pointer group ${
-                    selectedJobId === job.id ? 'ring-2 ring-primary bg-primary/5' : ''
-                  }`}
+                  className={`p-2 border border-border shadow-sm hover:shadow-md transition-all duration-150 cursor-pointer group ${selectedJobId === job.id
+                      ? "ring-2 ring-primary bg-primary/5"
+                      : ""
+                    }`}
                 >
                   <div className="flex items-start gap-2 mb-1">
-                    <div className={`h-8 w-8 rounded-lg bg-gradient-to-br ${job.logoColor} flex items-center justify-center text-white font-bold text-xs shadow-sm flex-shrink-0`}>
+                    <div
+                      className={`h-8 w-8 rounded-lg bg-gradient-to-br ${job.logoColor} flex items-center justify-center text-white font-bold text-xs shadow-sm flex-shrink-0`}
+                    >
                       {job.logo}
                     </div>
                     <div className="flex-1 min-w-0">
                       <h3 className="font-semibold text-xs text-foreground group-hover:text-primary transition-colors line-clamp-1">
                         {job.title}
                       </h3>
-                      <p className="text-[11px] text-muted-foreground">{job.company}</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {job.company}
+                      </p>
                     </div>
                   </div>
 
@@ -386,8 +489,18 @@ export default function JobsPage() {
                   </div>
 
                   <div className="flex gap-1.5 mb-2">
-                    <Badge variant="secondary" className="rounded text-[10px] font-medium px-1.5 py-0.5">{job.type}</Badge>
-                    <Badge variant="secondary" className="rounded text-[10px] font-medium px-1.5 py-0.5">{job.level}</Badge>
+                    <Badge
+                      variant="secondary"
+                      className="rounded text-[10px] font-medium px-1.5 py-0.5"
+                    >
+                      {job.type}
+                    </Badge>
+                    <Badge
+                      variant="secondary"
+                      className="rounded text-[10px] font-medium px-1.5 py-0.5"
+                    >
+                      {job.level}
+                    </Badge>
                   </div>
 
                   <div className="flex items-center justify-between pt-2 border-t border-border/50 text-[10px]">
@@ -396,17 +509,17 @@ export default function JobsPage() {
                       {job.posted}
                     </span>
                   </div>
-              </Card>
-            );
-          })}
-          
+                </Card>
+              );
+            })}
+
           {/* Pagination */}
           {jobs.length > jobsPerPage && (
             <div className="flex items-center justify-center gap-2 pt-4">
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
                 className="bg-transparent"
               >
@@ -416,18 +529,22 @@ export default function JobsPage() {
                 {(() => {
                   const totalPages = Math.ceil(jobs.length / jobsPerPage);
                   const maxPages = 5;
-                  let start = Math.max(1, currentPage - Math.floor(maxPages / 2));
+                  let start = Math.max(
+                    1,
+                    currentPage - Math.floor(maxPages / 2),
+                  );
                   let end = Math.min(totalPages, start + maxPages - 1);
-                  if (end - start < maxPages - 1) start = Math.max(1, end - maxPages + 1);
+                  if (end - start < maxPages - 1)
+                    start = Math.max(1, end - maxPages + 1);
                   const pages: number[] = [];
                   for (let i = start; i <= end; i++) pages.push(i);
                   return pages.map((page) => (
                     <Button
                       key={page}
-                      variant={currentPage === page ? 'default' : 'outline'}
+                      variant={currentPage === page ? "default" : "outline"}
                       size="sm"
                       onClick={() => setCurrentPage(page)}
-                      className={currentPage !== page ? 'bg-transparent' : ''}
+                      className={currentPage !== page ? "bg-transparent" : ""}
                     >
                       {page}
                     </Button>
@@ -437,7 +554,11 @@ export default function JobsPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setCurrentPage(p => Math.min(Math.ceil(jobs.length / jobsPerPage), p + 1))}
+                onClick={() =>
+                  setCurrentPage((p) =>
+                    Math.min(Math.ceil(jobs.length / jobsPerPage), p + 1),
+                  )
+                }
                 disabled={currentPage === Math.ceil(jobs.length / jobsPerPage)}
                 className="bg-transparent"
               >
@@ -452,20 +573,26 @@ export default function JobsPage() {
           {selectedJobId ? (
             <Card className="border-border/50 shadow-sm">
               {(() => {
-                const job = jobs.find(j => j.id === selectedJobId);
+                const job = jobs.find((j) => j.id === selectedJobId);
                 if (!job) return null;
-                
+
                 return (
                   <>
                     {/* Header with Actions */}
                     <div className="p-5 border-b border-border/50 space-y-4">
                       <div className="flex items-start gap-4">
-                        <div className={`h-14 w-14 rounded-xl bg-gradient-to-br ${job.logoColor} flex items-center justify-center text-white font-bold text-xl shadow-sm flex-shrink-0`}>
+                        <div
+                          className={`h-14 w-14 rounded-xl bg-gradient-to-br ${job.logoColor} flex items-center justify-center text-white font-bold text-xl shadow-sm flex-shrink-0`}
+                        >
                           {job.logo}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h2 className="font-bold text-xl text-foreground mb-1">{job.title}</h2>
-                          <p className="text-muted-foreground font-medium">{job.company}</p>
+                          <h2 className="font-bold text-xl text-foreground mb-1">
+                            {job.title}
+                          </h2>
+                          <p className="text-muted-foreground font-medium">
+                            {job.company}
+                          </p>
                         </div>
                       </div>
 
@@ -475,8 +602,8 @@ export default function JobsPage() {
                           <Zap className="h-4 w-4 mr-2" />
                           Apply Now
                         </Button>
-                        <Button 
-                          variant="outline" 
+                        <Button
+                          variant="outline"
                           size="icon"
                           className="h-11 w-11 rounded-xl bg-transparent flex-shrink-0"
                           onClick={(e) => {
@@ -484,7 +611,9 @@ export default function JobsPage() {
                             toggleSaveJob(job.id);
                           }}
                         >
-                          <Bookmark className={`h-5 w-5 ${savedJobs.has(job.id) ? 'fill-current' : ''}`} />
+                          <Bookmark
+                            className={`h-5 w-5 ${savedJobs.has(job.id) ? "fill-current" : ""}`}
+                          />
                         </Button>
                       </div>
                     </div>
@@ -495,7 +624,9 @@ export default function JobsPage() {
                       <div className="space-y-3">
                         <div className="flex items-center gap-2 text-sm">
                           <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                          <span className="text-foreground">{job.location}</span>
+                          <span className="text-foreground">
+                            {job.location}
+                          </span>
                         </div>
                         <div className="flex items-center gap-2 text-sm">
                           <DollarSign className="h-4 w-4 text-muted-foreground flex-shrink-0" />
@@ -503,21 +634,39 @@ export default function JobsPage() {
                         </div>
                         <div className="flex items-center gap-2 text-sm">
                           <Clock className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                          <span className="text-foreground">Posted {job.posted}</span>
+                          <span className="text-foreground">
+                            Posted {job.posted}
+                          </span>
                         </div>
                       </div>
 
                       {/* Tags */}
                       <div className="space-y-3">
                         <div className="flex gap-2">
-                          <Badge variant="secondary" className="rounded-lg font-medium">{job.type}</Badge>
-                          <Badge variant="secondary" className="rounded-lg font-medium">{job.level}</Badge>
+                          <Badge
+                            variant="secondary"
+                            className="rounded-lg font-medium"
+                          >
+                            {job.type}
+                          </Badge>
+                          <Badge
+                            variant="secondary"
+                            className="rounded-lg font-medium"
+                          >
+                            {job.level}
+                          </Badge>
                         </div>
                         <div>
-                          <p className="text-sm font-semibold text-foreground mb-2">Required Skills</p>
+                          <p className="text-sm font-semibold text-foreground mb-2">
+                            Required Skills
+                          </p>
                           <div className="flex flex-wrap gap-1.5">
                             {job.skills.map((skill) => (
-                              <Badge key={skill} variant="outline" className="rounded-lg text-xs font-normal bg-transparent">
+                              <Badge
+                                key={skill}
+                                variant="outline"
+                                className="rounded-lg text-xs font-normal bg-transparent"
+                              >
                                 {skill}
                               </Badge>
                             ))}
@@ -527,21 +676,25 @@ export default function JobsPage() {
 
                       {/* Job Description */}
                       <div className="space-y-3">
-                        <h3 className="font-semibold text-foreground text-base">About the Role</h3>
+                        <h3 className="font-semibold text-foreground text-base">
+                          About the Role
+                        </h3>
                         {job.description ? (
                           <div
                             className="prose max-w-none text-sm text-muted-foreground leading-relaxed"
-                            dangerouslySetInnerHTML={{ __html: normalizeDescription(job.description) }}
+                            dangerouslySetInnerHTML={{
+                              __html: normalizeDescription(job.description),
+                            }}
                           />
                         ) : (
                           <>
                             <p className="text-sm text-muted-foreground leading-relaxed">
-                              Job description is not available for this position.
+                              Job description is not available for this
+                              position.
                             </p>
                           </>
                         )}
                       </div>
-
                     </div>
                   </>
                 );
@@ -569,13 +722,13 @@ function normalizeDescription(html?: string | null) {
   if (!html) return "";
   // first sanitize to remove unsafe content
   const sanitized = DOMPurify.sanitize(html);
-  const doc = new DOMParser().parseFromString(sanitized, 'text/html');
-  const headings = doc.querySelectorAll('h1,h2,h3,h4,h5,h6');
+  const doc = new DOMParser().parseFromString(sanitized, "text/html");
+  const headings = doc.querySelectorAll("h1,h2,h3,h4,h5,h6");
   headings.forEach((h) => {
-    const wrapper = doc.createElement('h3');
+    const wrapper = doc.createElement("h3");
     wrapper.innerHTML = h.innerHTML;
     // consistent heading style used across the app
-    wrapper.className = 'font-semibold text-foreground text-base';
+    wrapper.className = "font-semibold text-foreground text-base";
     h.replaceWith(wrapper);
   });
   // re-sanitize after transformations

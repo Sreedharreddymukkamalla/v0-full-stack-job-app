@@ -124,7 +124,7 @@ export function Header() {
       try {
         const profile = getProfile();
         if (!profile) return;
-        const userId = profile.user_id ?? profile.id ?? profile.user?.id;
+        const userId = profile.user_id;
         const data = await getUserConversations(userId);
         if (Array.isArray(data)) {
           const mapped = data.slice(0, 10).map((c: any) => ({
@@ -159,7 +159,7 @@ export function Header() {
               user: newRow.sender_id || `Conversation ${convId}`,
               avatar: prev[idx]?.avatar || '/placeholder.svg',
               message: newRow.content,
-              time: newRow.created_at ? new Date(newRow.created_at).toLocaleString() : '',
+              time: newRow.created_at ?? '',
               read: false,
             };
             if (idx >= 0) {
@@ -184,6 +184,27 @@ export function Header() {
       } catch (e) { }
     };
   }, []);
+
+  // format timestamps into short relative form (e.g. "just now", "5m", "1h", "2d")
+  function formatTimeAgo(dateString?: string | null) {
+    if (!dateString) return '';
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return '';
+      const now = new Date();
+      const diffMs = now.getTime() - date.getTime();
+      const diffMins = Math.floor(diffMs / 60000);
+      if (diffMins < 1) return 'just now';
+      if (diffMins < 60) return `${diffMins}m`;
+      const diffHours = Math.floor(diffMins / 60);
+      if (diffHours < 24) return `${diffHours}h`;
+      const diffDays = Math.floor(diffHours / 24);
+      if (diffDays < 7) return `${diffDays}d`;
+      return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    } catch {
+      return '';
+    }
+  }
 
   const handleSignOut = () => {
     // clear in-memory profile and auth tokens
@@ -272,7 +293,7 @@ export function Header() {
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium">{msg.user}</p>
                         <p className="text-xs text-muted-foreground line-clamp-2">{msg.message}</p>
-                        <p className="text-xs text-muted-foreground mt-1">{msg.time}</p>
+                        <p className="text-xs text-muted-foreground mt-1">{formatTimeAgo(msg.time)}</p>
                       </div>
                       {!msg.read && (
                         <div className="h-2 w-2 rounded-full bg-primary flex-shrink-0 mt-1" />
@@ -330,7 +351,7 @@ export function Header() {
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium">{notif.user}</p>
                           <p className="text-xs text-muted-foreground line-clamp-2">{notif.message}</p>
-                          <p className="text-xs text-muted-foreground mt-1">{notif.time}</p>
+                          <p className="text-xs text-muted-foreground mt-1">{formatTimeAgo(notif.time)}</p>
                         </div>
                         {!notif.read && (
                           <div className="h-2 w-2 rounded-full bg-primary flex-shrink-0 mt-1" />

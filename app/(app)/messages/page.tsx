@@ -93,6 +93,27 @@ export default function MessagesPage() {
     void refreshConversations();
   }, []);
 
+  // format timestamps into short relative form (e.g. "just now", "5m", "1h", "2d")
+  function formatTimeAgo(dateString?: string | null) {
+    if (!dateString) return '';
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return '';
+      const now = new Date();
+      const diffMs = now.getTime() - date.getTime();
+      const diffMins = Math.floor(diffMs / 60000);
+      if (diffMins < 1) return 'just now';
+      if (diffMins < 60) return `${diffMins}m ago`;
+      const diffHours = Math.floor(diffMins / 60);
+      if (diffHours < 24) return `${diffHours}h ago`;
+      const diffDays = Math.floor(diffHours / 24);
+      if (diffDays < 7) return `${diffDays}d ago`;
+      return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    } catch {
+      return '';
+    }
+  }
+
   // Check if we should open a specific conversation (client-side only)
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -118,7 +139,7 @@ export default function MessagesPage() {
               role: '',
               avatar: '/placeholder.svg',
               lastMessage: '',
-              timestamp: 'Just now',
+              timestamp: new Date().toISOString(),
               unread: 0,
               online: false,
             };
@@ -150,7 +171,7 @@ export default function MessagesPage() {
           id: m.id,
           sender: m.sender_name || m.sender || m.sender_id || 'Unknown',
           content: m.content,
-          timestamp: m.created_at ? new Date(m.created_at).toLocaleString() : '',
+          timestamp: m.created_at ?? '',
           isUser: Boolean(m.sender_id === (getProfile()?.user_id ?? getProfile()?.id)),
         }));
         setMessagesForChat(mapped);
@@ -225,7 +246,7 @@ export default function MessagesPage() {
               id: row.id,
               sender: row.sender_name || row.sender || row.sender_id,
               content: row.content,
-              timestamp: row.created_at ? new Date(row.created_at).toLocaleString() : '',
+              timestamp: row.created_at ?? '',
             });
 
             if (ev === 'INSERT') {
@@ -354,7 +375,7 @@ export default function MessagesPage() {
         role: participant.headline || '',
         avatar: participant.avatar || '/placeholder.svg',
         lastMessage: '',
-        timestamp: 'Just now',
+        timestamp: new Date().toISOString(),
         unread: 0,
         online: false,
       };
@@ -385,7 +406,7 @@ export default function MessagesPage() {
       id: tempId,
       sender: 'You',
       content,
-      timestamp: new Date().toLocaleString(),
+      timestamp: new Date().toISOString(),
       isUser: true,
     };
 
@@ -403,7 +424,7 @@ export default function MessagesPage() {
           id: msg.id,
           sender: msg.sender_name || msg.sender || 'You',
           content: msg.content,
-          timestamp: msg.created_at ? new Date(msg.created_at).toLocaleString() : new Date().toLocaleString(),
+          timestamp: msg.created_at ?? new Date().toISOString(),
           isUser: true,
         };
         // replace optimistic message with server message
@@ -555,8 +576,8 @@ export default function MessagesPage() {
                   }
                 }}
                 className={`w-full p-4 text-left transition-all duration-200 border-b border-border/50 ${selectedConversation === conv.id
-                    ? 'bg-primary/5 border-l-2 border-l-primary'
-                    : 'hover:bg-secondary/50'
+                  ? 'bg-primary/5 border-l-2 border-l-primary'
+                  : 'hover:bg-secondary/50'
                   }`}
               >
                 <div className="flex items-start gap-3">
@@ -576,7 +597,7 @@ export default function MessagesPage() {
                       <h3 className={`font-semibold text-foreground truncate ${hasUnread ? 'text-primary' : ''}`}>
                         {conv.name}
                       </h3>
-                      <span className="text-xs text-muted-foreground flex-shrink-0 ml-2">{conv.timestamp}</span>
+                      <span className="text-xs text-muted-foreground flex-shrink-0 ml-2">{formatTimeAgo(conv.timestamp)}</span>
                     </div>
                     <p className="text-xs text-muted-foreground truncate mb-1">{conv.role}</p>
                     <p className={`text-sm truncate ${hasUnread ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
@@ -672,13 +693,13 @@ export default function MessagesPage() {
                 >
                   <div
                     className={`max-w-md px-4 py-3 shadow-sm ${msg.isUser
-                        ? 'bg-primary text-primary-foreground rounded-2xl rounded-br-md'
-                        : 'bg-card text-foreground rounded-2xl rounded-bl-md border border-border/50'
+                      ? 'bg-primary text-primary-foreground rounded-2xl rounded-br-md'
+                      : 'bg-card text-foreground rounded-2xl rounded-bl-md border border-border/50'
                       }`}
                   >
                     <p className="text-sm leading-relaxed">{msg.content}</p>
                     <div className={`flex items-center justify-end gap-1.5 mt-2 ${msg.isUser ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
-                      <span className="text-[10px]">{msg.timestamp}</span>
+                      <span className="text-[10px]">{formatTimeAgo(msg.timestamp)}</span>
                       {msg.isUser && <CheckCheck className="h-3.5 w-3.5" />}
                     </div>
                   </div>
