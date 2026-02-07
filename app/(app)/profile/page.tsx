@@ -1664,7 +1664,7 @@ export default function ProfilePage() {
                   <div className="flex justify-center mt-4">
                     <Button
                       variant="secondary"
-                      className="rounded-lg px-6 bg-white border border-border text-foreground hover:bg-muted/50"
+                      className="rounded-lg px-6 border border-border bg-card text-card-foreground hover:bg-muted/50"
                       onClick={() =>
                         setShowAllProfilePosts(!showAllProfilePosts)
                       }

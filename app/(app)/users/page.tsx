@@ -114,25 +114,35 @@ export default function UsersPage() {
         if (data) {
           // Connections
           if (data.connections && Array.isArray(data.connections)) {
-            const mappedConnections = data.connections.map((c: any) => ({
-              id: c.id,
-              connectionId:
-                c.connection_id ??
-                c.connectionId ??
-                c.connection?.id ??
-                undefined,
-              name: c.name || c.other_name || c.full_name || "",
-              title: c.title || c.headline || c.other_headline || "",
-              company: c.company || c.company_name || "",
-              avatar:
-                c.avatar ||
-                c.other_avatar ||
-                c.author_avatar ||
-                "/placeholder.svg",
-              banner: c.cover_image_url || c.banner || "",
-              skills: c.skills || [],
-              type: "connected",
-            }));
+            const mappedConnections = data.connections.map((c: any) => {
+              const otherUserId =
+                c.user_id ??
+                c.other_user_id ??
+                (Number(c.requester_id) === Number(userId)
+                  ? c.receiver_id
+                  : c.requester_id) ??
+                c.id;
+              return {
+                id: c.id,
+                userId: otherUserId,
+                connectionId:
+                  c.connection_id ??
+                  c.connectionId ??
+                  c.connection?.id ??
+                  undefined,
+                name: c.name || c.other_name || c.full_name || "",
+                title: c.title || c.headline || c.other_headline || "",
+                company: c.company || c.company_name || "",
+                avatar:
+                  c.avatar ||
+                  c.other_avatar ||
+                  c.author_avatar ||
+                  "/placeholder.svg",
+                banner: c.cover_image_url || c.banner || "",
+                skills: c.skills || [],
+                type: "connected",
+              };
+            });
             setMyConnections(mappedConnections);
           }
 
@@ -141,8 +151,12 @@ export default function UsersPage() {
             const incoming: any[] = [];
             const sent: any[] = [];
             for (const r of data.requests) {
+              const isReceived =
+                !(r.requester_id && Number(r.requester_id) === Number(userId));
+              const otherUserId = isReceived ? r.requester_id : r.receiver_id;
               const item = {
                 id: r.id,
+                userId: otherUserId ?? r.id,
                 connectionId:
                   r.id ?? r.connection_id ?? r.connectionId ?? undefined,
                 name: r.other_name || r.name || "",
@@ -157,8 +171,7 @@ export default function UsersPage() {
                 receiver_id: r.receiver_id,
               };
 
-              // If the current user is the requester, treat as a sent (pending) request
-              if (r.requester_id && Number(r.requester_id) === Number(userId)) {
+              if (!isReceived) {
                 sent.push({ ...item, status: "pending", isReceived: false });
               } else {
                 incoming.push(item);
@@ -172,6 +185,7 @@ export default function UsersPage() {
           if (data.suggestions && Array.isArray(data.suggestions)) {
             const mappedSuggestions = data.suggestions.map((s: any) => ({
               id: s.id,
+              userId: s.user_id ?? s.id,
               name: s.name || s.other_name || "",
               title: s.headline || s.other_headline || "",
               company: s.company || "",
@@ -394,7 +408,7 @@ export default function UsersPage() {
                       {invites.map((user) => (
                         <Card
                           key={user.id}
-                          className="overflow-hidden relative group hover:shadow-lg transition-shadow h-[400px] flex flex-col"
+                          className="overflow-hidden relative group hover:shadow-lg transition-shadow h-[340px] flex flex-col p-0 gap-0"
                         >
                           <button
                             onClick={() => handleRemove(user.id, "invitation")}
@@ -402,20 +416,20 @@ export default function UsersPage() {
                           >
                             <X className="h-4 w-4 text-foreground" />
                           </button>
-                          <div className="h-24 w-full overflow-hidden bg-gradient-to-br from-primary/20 to-accent/20">
+                          <div className="h-24 w-full overflow-hidden bg-gradient-to-br from-primary/20 to-accent/20 shrink-0">
                             <img
                               src={user.banner || "/placeholder.svg"}
                               alt=""
                               className="h-full w-full object-cover"
                             />
                           </div>
-                          <div className="flex-1 flex flex-col justify-between">
-                            <div>
+                          <div className="flex-1 flex flex-col min-h-0">
+                            <div className="shrink-0">
                               <div className="flex justify-center -mt-12 mb-3">
                                 <div
                                   className="cursor-pointer"
                                   onClick={() =>
-                                    router.push(`/profile/${user.id}`)
+                                    router.push(`/users/${user.userId ?? user.id}`)
                                   }
                                   title="View Profile"
                                 >
@@ -429,11 +443,11 @@ export default function UsersPage() {
                                   </Avatar>
                                 </div>
                               </div>
-                              <div className="text-center px-4 mb-2">
+                              <div className="text-center px-4 mb-1">
                                 <h3
                                   className="font-semibold text-lg text-foreground mb-1 truncate cursor-pointer hover:underline"
                                   onClick={() =>
-                                    router.push(`/profile/${user.id}`)
+                                    router.push(`/users/${user.userId ?? user.id}`)
                                   }
                                   title="View Profile"
                                 >
@@ -447,7 +461,8 @@ export default function UsersPage() {
                                 </p>
                               </div>
                             </div>
-                            <div className="px-4 flex gap-2 mb-4">
+                            <div className="flex-1 flex items-center justify-center px-4 pb-4">
+                              <div className="flex gap-2 w-full">
                               <Button
                                 size="sm"
                                 className="flex-1 cursor-pointer"
@@ -470,6 +485,7 @@ export default function UsersPage() {
                               >
                                 Ignore
                               </Button>
+                              </div>
                             </div>
                           </div>
                         </Card>
@@ -490,7 +506,7 @@ export default function UsersPage() {
                 {suggested.map((user) => (
                   <Card
                     key={user.id}
-                    className="overflow-hidden relative group hover:shadow-lg transition-shadow h-[400px] flex flex-col"
+                    className="overflow-hidden relative group hover:shadow-lg transition-shadow h-[340px] flex flex-col p-0 gap-0"
                   >
                     <button
                       onClick={() => handleRemove(user.id, "suggested")}
@@ -498,19 +514,19 @@ export default function UsersPage() {
                     >
                       <X className="h-4 w-4 text-foreground" />
                     </button>
-                    <div className="h-24 w-full overflow-hidden bg-gradient-to-br from-primary/20 to-accent/20">
+                    <div className="h-24 w-full overflow-hidden bg-gradient-to-br from-primary/20 to-accent/20 shrink-0">
                       <img
                         src={user.banner || "/placeholder.svg"}
                         alt=""
                         className="h-full w-full object-cover"
                       />
                     </div>
-                    <div className="flex-1 flex flex-col justify-between">
-                      <div>
+                    <div className="flex-1 flex flex-col min-h-0">
+                      <div className="shrink-0">
                         <div className="flex justify-center -mt-12 mb-3">
                           <div
                             className="cursor-pointer"
-                            onClick={() => router.push(`/profile/${user.id}`)}
+                            onClick={() => router.push(`/users/${user.userId ?? user.id}`)}
                             title="View Profile"
                           >
                             <Avatar className="h-24 w-24 ring-4 ring-card">
@@ -523,10 +539,10 @@ export default function UsersPage() {
                             </Avatar>
                           </div>
                         </div>
-                        <div className="text-center px-4 mb-2">
+                        <div className="text-center px-4 mb-1">
                           <h3
                             className="font-semibold text-lg text-foreground mb-1 truncate cursor-pointer hover:underline"
-                            onClick={() => router.push(`/profile/${user.id}`)}
+                            onClick={() => router.push(`/users/${user.userId ?? user.id}`)}
                             title="View Profile"
                           >
                             {user.name}
@@ -539,7 +555,8 @@ export default function UsersPage() {
                           </p>
                         </div>
                       </div>
-                      <div className="px-4 flex gap-2 mb-4">
+                      <div className="flex-1 flex items-center justify-center px-4 pb-4">
+                        <div className="flex gap-2 w-full">
                         <Button
                           size="sm"
                           className="flex-1 cursor-pointer"
@@ -548,6 +565,7 @@ export default function UsersPage() {
                           <UserPlus className="h-3.5 w-3.5 mr-1.5" />
                           Connect
                         </Button>
+                        </div>
                       </div>
                     </div>
                   </Card>
@@ -561,21 +579,21 @@ export default function UsersPage() {
               {myConnections.map((user) => (
                 <Card
                   key={user.id}
-                  className="overflow-hidden relative group hover:shadow-lg transition-shadow h-[400px] flex flex-col"
+                  className="overflow-hidden relative group hover:shadow-lg transition-shadow h-[340px] flex flex-col p-0 gap-0"
                 >
-                  <div className="h-24 w-full overflow-hidden bg-gradient-to-br from-primary/20 to-accent/20">
+                  <div className="h-24 w-full overflow-hidden bg-gradient-to-br from-primary/20 to-accent/20 shrink-0">
                     <img
                       src={user.banner || "/placeholder.svg"}
                       alt=""
                       className="h-full w-full object-cover"
                     />
                   </div>
-                  <div className="flex-1 flex flex-col justify-between">
-                    <div>
+                  <div className="flex-1 flex flex-col min-h-0">
+                    <div className="shrink-0">
                       <div className="flex justify-center -mt-12 mb-3">
                         <div
                           className="cursor-pointer"
-                          onClick={() => router.push(`/profile/${user.id}`)}
+                          onClick={() => router.push(`/users/${user.userId ?? user.id}`)}
                           title="View Profile"
                         >
                           <Avatar className="h-24 w-24 ring-4 ring-card">
@@ -588,8 +606,14 @@ export default function UsersPage() {
                           </Avatar>
                         </div>
                       </div>
-                      <div className="text-center px-4 mb-4">
-                        <h3 className="font-semibold text-lg text-foreground mb-1 truncate">
+                      <div className="text-center px-4 mb-1">
+                        <h3
+                          className="font-semibold text-lg text-foreground mb-1 truncate cursor-pointer hover:underline"
+                          onClick={() =>
+                            router.push(`/users/${user.userId ?? user.id}`)
+                          }
+                          title="View Profile"
+                        >
                           {user.name}
                         </h3>
                         <p className="text-sm text-primary font-medium truncate">
@@ -599,7 +623,7 @@ export default function UsersPage() {
                           {user.company}
                         </p>
                       </div>
-                      <div className="px-4 mb-4">
+                      <div className="px-4 mb-1">
                         <div className="flex flex-wrap gap-1 justify-center">
                           {user.skills.slice(0, 3).map((skill) => (
                             <Badge
@@ -613,7 +637,8 @@ export default function UsersPage() {
                         </div>
                       </div>
                     </div>
-                    <div className="px-4 flex gap-2 mb-4">
+                    <div className="flex-1 flex items-center justify-center px-4 pb-4">
+                      <div className="flex gap-2 w-full">
                       <Button
                         variant="outline"
                         size="sm"
@@ -633,6 +658,7 @@ export default function UsersPage() {
                           ? "Removing..."
                           : "Remove"}
                       </Button>
+                      </div>
                     </div>
                   </div>
                 </Card>
@@ -645,21 +671,21 @@ export default function UsersPage() {
               {pending.map((user) => (
                 <Card
                   key={user.id}
-                  className="overflow-hidden relative group hover:shadow-lg transition-shadow h-[400px] flex flex-col"
+                  className="overflow-hidden relative group hover:shadow-lg transition-shadow h-[340px] flex flex-col p-0 gap-0"
                 >
-                  <div className="h-24 w-full overflow-hidden bg-gradient-to-br from-primary/20 to-accent/20">
+                  <div className="h-24 w-full overflow-hidden bg-gradient-to-br from-primary/20 to-accent/20 shrink-0">
                     <img
                       src={user.banner || "/placeholder.svg"}
                       alt=""
                       className="h-full w-full object-cover"
                     />
                   </div>
-                  <div className="flex-1 flex flex-col justify-between">
-                    <div>
+                  <div className="flex-1 flex flex-col min-h-0">
+                    <div className="shrink-0">
                       <div className="flex justify-center -mt-12 mb-3">
                         <div
                           className="cursor-pointer"
-                          onClick={() => router.push(`/profile/${user.id}`)}
+                          onClick={() => router.push(`/users/${user.userId ?? user.id}`)}
                           title="View Profile"
                         >
                           <Avatar className="h-24 w-24 ring-4 ring-card">
@@ -672,10 +698,10 @@ export default function UsersPage() {
                           </Avatar>
                         </div>
                       </div>
-                      <div className="text-center px-4 mb-2">
+                      <div className="text-center px-4 mb-1">
                         <h3
                           className="font-semibold text-lg text-foreground mb-1 truncate cursor-pointer hover:underline"
-                          onClick={() => router.push(`/profile/${user.id}`)}
+                          onClick={() => router.push(`/users/${user.userId ?? user.id}`)}
                           title="View Profile"
                         >
                           {user.name}
@@ -687,7 +713,7 @@ export default function UsersPage() {
                           {user.company}
                         </p>
                       </div>
-                      <div className="px-4 mb-4">
+                      <div className="px-4 mb-1">
                         <div className="flex flex-wrap gap-1 justify-center">
                           {user.skills.slice(0, 3).map((skill) => (
                             <Badge
@@ -701,7 +727,8 @@ export default function UsersPage() {
                         </div>
                       </div>
                     </div>
-                    <div className="px-4 flex gap-2 mb-4">
+                    <div className="flex-1 flex items-center justify-center px-4 pb-4">
+                      <div className="flex gap-2 w-full">
                       <Button
                         variant="outline"
                         size="sm"
@@ -720,6 +747,7 @@ export default function UsersPage() {
                       >
                         Cancel
                       </Button>
+                      </div>
                     </div>
                   </div>
                 </Card>
