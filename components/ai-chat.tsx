@@ -21,7 +21,9 @@ import {
 } from "@/components/ai-elements/prompt-input";
 import { useState, useRef } from "react";
 import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } from 'ai';
 import { Response } from "@/components/ai-elements/response";
+import Weather from '@/components/weather';
 import { GlobeIcon, Paperclip } from "lucide-react";
 import {
   Source,
@@ -48,7 +50,28 @@ const AIChat = () => {
   const [model, setModel] = useState<string>(models[0].value);
   const [webSearch, setWebSearch] = useState(false);
   const [files, setFiles] = useState<FileList | undefined>(undefined);
-  const { messages, sendMessage, status, stop, regenerate, error } = useChat();
+  const { messages, sendMessage, status, stop, regenerate, error, addToolOutput } = useChat({
+    transport: new DefaultChatTransport({ api: '/api/chat' }),
+    sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
+    async onToolCall({ toolCall }) {
+      // Narrow dynamic tools first
+      if (toolCall.dynamic) return;
+
+      // Client-side automatic tool: getLocation
+      if (toolCall.toolName === 'getLocation') {
+        const cities = ['New York', 'Los Angeles', 'Chicago', 'San Francisco'];
+        // No await to avoid deadlocks per docs
+        addToolOutput({
+          tool: 'getLocation',
+          toolCallId: toolCall.toolCallId,
+          output: cities[Math.floor(Math.random() * cities.length)],
+        });
+        return;
+      }
+
+      // Example: client-side confirmation could be handled by UI; we leave other tools to UI rendering
+    },
+  });
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -113,6 +136,36 @@ const AIChat = () => {
                               {part.text}
                             </Response>
                           );
+                        case 'tool-getLocation': {
+                          const callId = part.toolCallId;
+                          switch (part.state) {
+                            case 'input-streaming':
+                              return <div key={callId}>Preparing location request...</div>;
+                            case 'input-available':
+                              return <div key={callId}>Getting location...</div>;
+                            case 'output-available':
+                              return <div key={callId}>Location: {String(part.output)}</div>;
+                            case 'output-error':
+                              return <div key={callId}>Error getting location: {part.errorText}</div>;
+                          }
+                          break;
+                        }
+                        case 'tool-displayWeather': {
+                          switch (part.state) {
+                            case 'input-available':
+                              return <div key={`${message.id}-${i}`}>Loading weather...</div>;
+                            case 'output-available':
+                              return (
+                                <div key={`${message.id}-${i}`}>
+                                  <Weather {...part.output} />
+                                </div>
+                              );
+                            case 'output-error':
+                              return <div key={`${message.id}-${i}`}>Error: {part.errorText}</div>;
+                            default:
+                              return null;
+                          }
+                        }
                         case "reasoning":
                           return (
                             <Reasoning
