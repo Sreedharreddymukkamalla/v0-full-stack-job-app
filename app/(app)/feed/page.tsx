@@ -65,6 +65,7 @@ export default function FeedPage() {
   const [savedPosts, setSavedPosts] = useState<Set<string>>(new Set());
   const [showComments, setShowComments] = useState<string | null>(null);
   const [commentText, setCommentText] = useState("");
+  const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set());
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [shareContent, setShareContent] = useState("");
   const [sharingPost, setSharingPost] = useState<Post | null>(null);
@@ -203,6 +204,18 @@ export default function FeedPage() {
 
   const toggleSave = (postId: string) => {
     setSavedPosts((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(postId)) {
+        newSet.delete(postId);
+      } else {
+        newSet.add(postId);
+      }
+      return newSet;
+    });
+  };
+
+  const togglePostExpanded = (postId: string) => {
+    setExpandedPosts((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(postId)) {
         newSet.delete(postId);
@@ -444,6 +457,17 @@ export default function FeedPage() {
                 const author = getUser(post.author_id);
                 const isLiked = likedPosts.has(post.id);
                 const isSaved = savedPosts.has(post.id);
+                const normalizedContent = post.content?.trim() ?? "";
+                const paragraphs = normalizedContent
+                  .split(/\n\s*\n/)
+                  .map((paragraph) => paragraph.trim())
+                  .filter(Boolean);
+                const hasLongContent = paragraphs.length > 2;
+                const isExpanded = expandedPosts.has(post.id);
+                const displayedParagraphs =
+                  !hasLongContent || isExpanded
+                    ? paragraphs
+                    : paragraphs.slice(0, 2);
 
                 return (
                   <Card
@@ -514,9 +538,55 @@ export default function FeedPage() {
                     </div>
 
                     {/* Post Content */}
-                    <p className="text-foreground leading-relaxed mb-4 whitespace-pre-wrap">
-                      {post.content}
-                    </p>
+                    <div className="mb-4 space-y-4 text-foreground leading-relaxed">
+                      {displayedParagraphs.length > 0 ? (
+                        displayedParagraphs.map((paragraph, index) => {
+                          const isLastParagraph =
+                            index === displayedParagraphs.length - 1;
+                          const showInlineToggle =
+                            hasLongContent && isLastParagraph;
+
+                          return (
+                            <p
+                              key={`${post.id}-paragraph-${index}`}
+                              className="whitespace-pre-wrap"
+                            >
+                              {paragraph}
+                              {showInlineToggle && (
+                                <>
+                                  {" "}
+                                  <button
+                                    type="button"
+                                    className="text-primary hover:underline font-medium"
+                                    onClick={() =>
+                                      togglePostExpanded(post.id)
+                                    }
+                                  >
+                                    {isExpanded ? "See less" : "See more"}
+                                  </button>
+                                </>
+                              )}
+                            </p>
+                          );
+                        })
+                      ) : (
+                        <p className="whitespace-pre-wrap">
+                          {post.content}
+                          {hasLongContent && (
+                            <>
+                              {" "}
+                              <button
+                                type="button"
+                                className="text-primary hover:underline font-medium"
+                                onClick={() => togglePostExpanded(post.id)}
+                              >
+                                {isExpanded ? "See less" : "See more"}
+                              </button>
+                            </>
+                          )}
+                        </p>
+                      )}
+                    </div>
 
                     {/* Post Image */}
                     {(post as any).image && (
