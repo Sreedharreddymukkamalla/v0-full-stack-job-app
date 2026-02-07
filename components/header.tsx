@@ -300,10 +300,10 @@ export function Header() {
               <Button
                 variant="ghost"
                 size="icon"
-                className="relative h-10 w-10 rounded-xl group transition-colors"
+                className="relative h-10 w-10 rounded-xl group hover:ring-2 hover:ring-primary/50 transition-all cursor-pointer"
               >
-                <span className="flex items-center justify-center h-full w-full rounded-xl transition-colors group-hover:bg-teal-600 group-active:bg-teal-700">
-                  <MessageSquare className="h-5 w-5 text-muted-foreground transition-colors group-hover:text-white group-active:text-white" />
+                <span className="flex items-center justify-center h-full w-full rounded-xl transition-colors group-hover:bg-primary group-active:bg-primary/90">
+                  <MessageSquare className="h-5 w-5 text-muted-foreground transition-colors group-hover:text-primary-foreground group-active:text-primary-foreground" />
                 </span>
                 {unreadMsgCount > 0 && (
                   <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-destructive ring-2 ring-card" />
@@ -379,10 +379,10 @@ export function Header() {
               <Button
                 variant="ghost"
                 size="icon"
-                className="relative h-10 w-10 rounded-xl group transition-colors"
+                className="relative h-10 w-10 rounded-xl group hover:ring-2 hover:ring-primary/50 transition-all cursor-pointer"
               >
-                <span className="flex items-center justify-center h-full w-full rounded-xl transition-colors group-hover:bg-teal-600 group-active:bg-teal-700">
-                  <Bell className="h-5 w-5 text-muted-foreground transition-colors group-hover:text-white group-active:text-white" />
+                <span className="flex items-center justify-center h-full w-full rounded-xl transition-colors group-hover:bg-primary group-active:bg-primary/90">
+                  <Bell className="h-5 w-5 text-muted-foreground transition-colors group-hover:text-primary-foreground group-active:text-primary-foreground" />
                 </span>
                 {unreadNotifCount > 0 && (
                   <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-destructive ring-2 ring-card" />
