@@ -40,38 +40,35 @@ const models = [
   {
     name: "GPT 4o",
     value: "openai/gpt-4o",
-  },
-  {
-    name: "Deepseek R1",
-    value: "deepseek/deepseek-r1",
-  },
+  }
 ];
 
 const AIChat = () => {
   const [input, setInput] = useState("");
   const [model, setModel] = useState<string>(models[0].value);
   const [webSearch, setWebSearch] = useState(false);
-  const { messages, handleSubmit: handleChatSubmit, input: chatInput, setInput: setChatInput, isLoading } = useChat({
-    api: '/api/chat',
-  });
+  const { messages, sendMessage, status } = useChat();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (input.trim()) {
-      setChatInput("");
-      await handleChatSubmit(e, {
-        body: {
-          model: model,
-          webSearch: webSearch,
-        },
-      });
+      sendMessage(
+        { text: input },
+        {
+          body: {
+            model: model,
+            webSearch: webSearch,
+          },
+        }
+      );
+      setInput("");
     }
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-6 relative size-full h-screen border rounded-lg max-h-[700px]">
+    <div className="max-w-4xl mx-auto p-4 relative h-[calc(100vh-6rem)] border rounded-lg overflow-hidden">
       <div className="flex flex-col h-full">
-        <Conversation className="h-full">
+        <Conversation className="flex-1 overflow-auto">
           <ConversationContent>
             {messages.map((message) => (
               <div key={message.id}>
@@ -131,7 +128,7 @@ const AIChat = () => {
                 </Message>
               </div>
             ))}
-            {isLoading && <Loader />}
+            {status === "submitted" && <Loader />}
           </ConversationContent>
           <ConversationScrollButton />
         </Conversation>
@@ -140,40 +137,18 @@ const AIChat = () => {
           <PromptInputTextarea
             onChange={(e) => setInput(e.target.value)}
             value={input}
-            placeholder="Ask me anything about job search, careers, or interviews..."
           />
           <PromptInputToolbar>
             <PromptInputTools>
               <PromptInputButton
-                type="button"
                 variant={webSearch ? "default" : "ghost"}
                 onClick={() => setWebSearch(!webSearch)}
               >
                 <GlobeIcon size={16} />
                 <span>Search</span>
               </PromptInputButton>
-              <PromptInputModelSelect
-                onValueChange={(value) => {
-                  setModel(value);
-                }}
-                value={model}
-              >
-                <PromptInputModelSelectTrigger>
-                  <PromptInputModelSelectValue />
-                </PromptInputModelSelectTrigger>
-                <PromptInputModelSelectContent>
-                  {models.map((model) => (
-                    <PromptInputModelSelectItem
-                      key={model.value}
-                      value={model.value}
-                    >
-                      {model.name}
-                    </PromptInputModelSelectItem>
-                  ))}
-                </PromptInputModelSelectContent>
-              </PromptInputModelSelect>
             </PromptInputTools>
-            <PromptInputSubmit disabled={!input || isLoading} status={isLoading ? "loading" : "idle"} />
+            <PromptInputSubmit disabled={!input} status={status} />
           </PromptInputToolbar>
         </PromptInput>
       </div>
