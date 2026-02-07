@@ -51,21 +51,20 @@ const AIChat = () => {
   const [input, setInput] = useState("");
   const [model, setModel] = useState<string>(models[0].value);
   const [webSearch, setWebSearch] = useState(false);
-  const { messages, sendMessage, status } = useChat();
+  const { messages, handleSubmit: handleChatSubmit, input: chatInput, setInput: setChatInput, isLoading } = useChat({
+    api: '/api/chat',
+  });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (input.trim()) {
-      sendMessage(
-        { text: input },
-        {
-          body: {
-            model: model,
-            webSearch: webSearch,
-          },
-        }
-      );
-      setInput("");
+      setChatInput("");
+      await handleChatSubmit(e, {
+        body: {
+          model: model,
+          webSearch: webSearch,
+        },
+      });
     }
   };
 
@@ -132,7 +131,7 @@ const AIChat = () => {
                 </Message>
               </div>
             ))}
-            {status === "submitted" && <Loader />}
+            {isLoading && <Loader />}
           </ConversationContent>
           <ConversationScrollButton />
         </Conversation>
@@ -141,10 +140,12 @@ const AIChat = () => {
           <PromptInputTextarea
             onChange={(e) => setInput(e.target.value)}
             value={input}
+            placeholder="Ask me anything about job search, careers, or interviews..."
           />
           <PromptInputToolbar>
             <PromptInputTools>
               <PromptInputButton
+                type="button"
                 variant={webSearch ? "default" : "ghost"}
                 onClick={() => setWebSearch(!webSearch)}
               >
@@ -172,7 +173,7 @@ const AIChat = () => {
                 </PromptInputModelSelectContent>
               </PromptInputModelSelect>
             </PromptInputTools>
-            <PromptInputSubmit disabled={!input} status={status} />
+            <PromptInputSubmit disabled={!input || isLoading} status={isLoading ? "loading" : "idle"} />
           </PromptInputToolbar>
         </PromptInput>
       </div>

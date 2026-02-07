@@ -1,7 +1,15 @@
 'use client';
 
-import { ChatPanel } from '@/components/ai-chat-panel';
+import AiChat from "@/components/ai-chat";
+import { ModeSwitcher } from "@/components/mode-switcher";
 
 export default function AIAgentPage() {
-  return <ChatPanel />;
+  return (
+    <>
+      <header className="flex justify-end p-4">
+        <ModeSwitcher />
+      </header>
+      <AiChat />
+    </>
+  );
 }
