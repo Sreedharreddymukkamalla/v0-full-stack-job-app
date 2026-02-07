@@ -30,6 +30,7 @@ import {
   Repeat2,
   Link as LinkIcon,
   Upload,
+  Crop,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -39,10 +40,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import Link from "next/link";
-import { getProfile, loadProfileFromApi } from "@/lib/profileStore";
+import { getProfile, loadProfileFromApi, setProfile } from "@/lib/profileStore";
 import { formatTimeAgo } from "@/lib/utils";
 import { getHomePageData } from "../feed/getHomePageData";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, uploadImage } from "@/lib/api";
 
 interface Post {
   id: string;
@@ -128,6 +129,17 @@ export default function ProfilePage() {
   const [showAllProfilePosts, setShowAllProfilePosts] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
+  const [avatarSaving, setAvatarSaving] = useState(false);
+  const [avatarDeleting, setAvatarDeleting] = useState(false);
+  const [coverSaving, setCoverSaving] = useState(false);
+  const [coverModalOpen, setCoverModalOpen] = useState(false);
+  const [coverUploadUrl, setCoverUploadUrl] = useState<string | null>(null);
+  const [coverCrop, setCoverCrop] = useState({ x: 0, y: 0 });
+  const [coverZoom, setCoverZoom] = useState(1);
+  const [coverCroppedAreaPixels, setCoverCroppedAreaPixels] =
+    useState<any>(null);
+  const [coverError, setCoverError] = useState<string | null>(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
 
   // Reset modal state when closed
   useEffect(() => {
@@ -139,6 +151,16 @@ export default function ProfilePage() {
       setAvatarError(null);
     }
   }, [avatarModalOpen]);
+
+  useEffect(() => {
+    if (!coverModalOpen) {
+      setCoverUploadUrl(null);
+      setCoverCrop({ x: 0, y: 0 });
+      setCoverZoom(1);
+      setCoverCroppedAreaPixels(null);
+      setCoverError(null);
+    }
+  }, [coverModalOpen]);
 
   // Load profile into local state on mount (re-populates after reload)
   useEffect(() => {
@@ -190,8 +212,41 @@ export default function ProfilePage() {
     setEducationData(mappedEducation);
   }, [currentProfile]);
 
+  const handleDeleteAvatar = async () => {
+    try {
+      setAvatarDeleting(true);
+      setAvatarError(null);
+      // Optimistically clear locally
+      const updated = {
+        ...currentProfile,
+        profile_image_url: null,
+        profile_image: null,
+        avatar: null,
+      };
+      setCurrentProfile(updated);
+      setProfile(updated);
+      setAvatarPreview(null);
+      // Persist to backend if available
+      await apiFetch("/profiles/me", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          profile_image_url: null,
+          profile_image: null,
+          avatar: null,
+        }),
+      }).catch(() => null);
+      setAvatarModalOpen(false);
+    } catch (err: any) {
+      setAvatarError(err?.message || "Failed to delete profile photo");
+    } finally {
+      setAvatarDeleting(false);
+    }
+  };
+
   // Fetch feed and filter to this user's posts only (profile Activity)
   const profileUserId = currentProfile?.user_id ?? currentProfile?.id;
+  const profile = currentProfile;
   useEffect(() => {
     if (!profileUserId) {
       setPostsLoading(false);
@@ -218,7 +273,7 @@ export default function ProfilePage() {
         if (data?.feed && Array.isArray(data.feed)) {
           const idStr = String(profileUserId);
           const filtered = data.feed.filter(
-            (item: any) => item.author_id?.toString() === idStr
+            (item: any) => item.author_id?.toString() === idStr,
           );
           const transformed: Post[] = filtered.map((item: any) => ({
             id: item.id?.toString() || "",
@@ -260,13 +315,20 @@ export default function ProfilePage() {
     fetchUserPosts();
   }, [profileUserId]);
 
-  const handleSaveSection = (section: string) => {
-    console.log(`[v0] Saving ${section}:`, {
-      profile: section === "profile" ? profileData : null,
-      experience: section === "experience" ? experienceData : null,
-      education: section === "education" ? educationData : null,
-      skills: section === "skills" ? profileData.skills : null,
-    });
+  const handleSaveSection = async (section: string) => {
+    if (section === "about") {
+      try {
+        const updated = await apiFetch<any>("/profiles/me", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ summary: profileData.bio }),
+        });
+        setCurrentProfile(updated);
+        setProfile(updated);
+      } catch (err) {
+        console.error("[profile] Failed to save about:", err);
+      }
+    }
     if (section === "skills") setSkillsBackup(null);
     setEditingSection(null);
   };
@@ -504,8 +566,10 @@ export default function ProfilePage() {
       });
       setUserPosts((prev) =>
         prev.map((p) =>
-          p.id === editingPost.id ? { ...p, content: res?.content ?? trimmed } : p
-        )
+          p.id === editingPost.id
+            ? { ...p, content: res?.content ?? trimmed }
+            : p,
+        ),
       );
       setEditPostDialogOpen(false);
       setEditingPost(null);
@@ -592,143 +656,500 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-secondary/20">
-      {/* Avatar Crop Modal */}
+      {/* Avatar Edit Modal */}
+      <input
+        ref={avatarInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (!file) return;
+          if (!file.type.startsWith("image/")) {
+            setAvatarError("Invalid file type. Please select an image.");
+            return;
+          }
+          const reader = new FileReader();
+          reader.onload = () => {
+            setAvatarUploadUrl(reader.result as string);
+            setAvatarError(null);
+          };
+          reader.readAsDataURL(file);
+          e.target.value = "";
+        }}
+      />
       <Dialog open={avatarModalOpen} onOpenChange={setAvatarModalOpen}>
         <DialogContent>
-          <h2 className="text-lg font-semibold mb-4">Edit image</h2>
-          {!avatarUploadUrl ? (
-            <div className="flex flex-col items-center justify-center h-64">
-              <input
-                ref={avatarInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  if (!file.type.startsWith("image/")) {
-                    setAvatarError(
-                      "Invalid file type. Please select an image.",
-                    );
-                    return;
-                  }
-                  const reader = new FileReader();
-                  reader.onload = () => {
-                    setAvatarUploadUrl(reader.result as string);
-                    setAvatarError(null);
-                  };
-                  reader.readAsDataURL(file);
-                }}
-              />
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => avatarInputRef.current?.click()}
-                className="mb-2"
-              >
-                <Camera className="h-5 w-5 mr-2" /> Upload Image
-              </Button>
-              {avatarError && (
-                <div className="text-destructive text-sm mt-2">
-                  {avatarError}
+          <h2 className="text-lg font-semibold mb-4">Profile photo</h2>
+          {avatarUploadUrl ? (
+            <div className="space-y-4">
+              <div className="relative h-64 w-full flex flex-col items-center">
+                <div className="relative h-48 w-48 mx-auto rounded-full overflow-hidden">
+                  <Cropper
+                    image={avatarUploadUrl}
+                    crop={avatarCrop}
+                    zoom={avatarZoom}
+                    aspect={1}
+                    cropShape="round"
+                    showGrid={false}
+                    onCropChange={setAvatarCrop}
+                    onZoomChange={setAvatarZoom}
+                    onCropComplete={(_, croppedAreaPixels) =>
+                      setAvatarCroppedAreaPixels(croppedAreaPixels)
+                    }
+                  />
                 </div>
+                <div className="mt-4 w-full flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">Zoom</span>
+                  <input
+                    type="range"
+                    min={1}
+                    max={3}
+                    step={0.01}
+                    value={avatarZoom}
+                    onChange={(e) => setAvatarZoom(Number(e.target.value))}
+                    className="flex-1"
+                  />
+                </div>
+              </div>
+              {avatarError && (
+                <div className="text-destructive text-sm">{avatarError}</div>
               )}
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setAvatarUploadUrl(null)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  disabled={!avatarCroppedAreaPixels || avatarSaving}
+                  onClick={async () => {
+                    if (!avatarUploadUrl || !avatarCroppedAreaPixels) return;
+                    try {
+                      setAvatarSaving(true);
+                      setAvatarError(null);
+                      const croppedDataUrl = await getCroppedImg(
+                        avatarUploadUrl,
+                        avatarCroppedAreaPixels,
+                      );
+                      const res = await fetch(croppedDataUrl);
+                      const blob = await res.blob();
+                      const file = new File([blob], "profile-photo.png", {
+                        type: "image/png",
+                      });
+                      const url = await uploadImage(file);
+                      const updated = await apiFetch<any>("/profiles/me", {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ profile_image_url: url }),
+                      });
+                      setCurrentProfile(updated);
+                      setProfile(updated);
+                      setAvatarPreview(croppedDataUrl);
+                      setAvatarUploadUrl(null);
+                      setAvatarModalOpen(false);
+                    } catch (err: any) {
+                      setAvatarError(
+                        err?.message || "Failed to save profile photo",
+                      );
+                    } finally {
+                      setAvatarSaving(false);
+                    }
+                  }}
+                >
+                  {avatarSaving ? "Saving..." : "Save changes"}
+                </Button>
+              </div>
             </div>
           ) : (
-            <div className="relative h-64 w-full flex flex-col items-center">
-              <div className="relative h-48 w-48 mx-auto rounded-full overflow-hidden">
+            <>
+              <div className="flex flex-col items-center justify-center py-6">
+                <Avatar className="h-32 w-32 border-4 border-muted">
+                  <AvatarImage
+                    src={
+                      avatarPreview ||
+                      currentProfile?.profile_image_url ||
+                      currentProfile?.profile_image ||
+                      currentProfile?.avatar ||
+                      "/placeholder.svg"
+                    }
+                  />
+                  <AvatarFallback className="text-2xl">
+                    {(profileData.name || "U").charAt(0)}
+                  </AvatarFallback>
+                </Avatar>
+              </div>
+              <div className="grid grid-cols-4 gap-2 mt-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex flex-col h-auto py-3 gap-1"
+                  onClick={() => {
+                    const url =
+                      avatarPreview ||
+                      currentProfile?.profile_image_url ||
+                      currentProfile?.profile_image ||
+                      currentProfile?.avatar;
+                    if (url && !url.includes("placeholder")) {
+                      setAvatarUploadUrl(url);
+                    } else {
+                      avatarInputRef.current?.click();
+                    }
+                  }}
+                >
+                  <Pencil className="h-5 w-5" />
+                  <span className="text-xs">Edit</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex flex-col h-auto py-3 gap-1"
+                  onClick={() => avatarInputRef.current?.click()}
+                >
+                  <Camera className="h-5 w-5" />
+                  <span className="text-xs">Upload</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex flex-col h-auto py-3 gap-1 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  disabled={avatarDeleting}
+                  onClick={handleDeleteAvatar}
+                >
+                  <Trash2 className="h-5 w-5" />
+                  <span className="text-xs">Delete</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex flex-col h-auto py-3 gap-1"
+                  onClick={() => {
+                    const url =
+                      avatarPreview ||
+                      currentProfile?.profile_image_url ||
+                      currentProfile?.profile_image ||
+                      currentProfile?.avatar;
+                    if (url && !url.includes("placeholder")) {
+                      setAvatarUploadUrl(url);
+                    } else {
+                      avatarInputRef.current?.click();
+                    }
+                  }}
+                >
+                  <Crop className="h-5 w-5" />
+                  <span className="text-xs">Crop</span>
+                </Button>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+      {/* Cover Edit Modal */}
+      <Input
+        type="file"
+        accept="image/*"
+        className="hidden"
+        id="cover-upload"
+        disabled={coverSaving}
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (!file) return;
+          if (!file.type.startsWith("image/")) {
+            setCoverError("Invalid file type. Please select an image.");
+            return;
+          }
+          const reader = new FileReader();
+          reader.onload = () => {
+            setCoverUploadUrl(reader.result as string);
+            setCoverError(null);
+          };
+          reader.readAsDataURL(file);
+          e.target.value = "";
+        }}
+      />
+      <Dialog open={coverModalOpen} onOpenChange={setCoverModalOpen}>
+        <DialogContent className="sm:max-w-2xl">
+          <h2 className="text-lg font-semibold mb-4">Cover photo</h2>
+          {coverUploadUrl ? (
+            <div className="space-y-4">
+              <div className="relative h-56 w-full rounded-lg overflow-hidden bg-muted">
                 <Cropper
-                  image={avatarUploadUrl}
-                  crop={avatarCrop}
-                  zoom={avatarZoom}
-                  aspect={1}
-                  cropShape="round"
+                  image={coverUploadUrl}
+                  crop={coverCrop}
+                  zoom={coverZoom}
+                  aspect={3}
+                  cropShape="rect"
                   showGrid={false}
-                  onCropChange={setAvatarCrop}
-                  onZoomChange={setAvatarZoom}
+                  onCropChange={setCoverCrop}
+                  onZoomChange={setCoverZoom}
                   onCropComplete={(_, croppedAreaPixels) =>
-                    setAvatarCroppedAreaPixels(croppedAreaPixels)
+                    setCoverCroppedAreaPixels(croppedAreaPixels)
                   }
                 />
               </div>
-              <div className="mt-4 w-full flex items-center gap-2">
+              <div className="flex items-center gap-2">
                 <span className="text-xs text-muted-foreground">Zoom</span>
                 <input
                   type="range"
                   min={1}
                   max={3}
                   step={0.01}
-                  value={avatarZoom}
-                  onChange={(e) => setAvatarZoom(Number(e.target.value))}
+                  value={coverZoom}
+                  onChange={(e) => setCoverZoom(Number(e.target.value))}
                   className="flex-1"
                 />
               </div>
+              {coverError && (
+                <div className="text-destructive text-sm">{coverError}</div>
+              )}
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCoverUploadUrl(null)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  disabled={!coverCroppedAreaPixels || coverSaving}
+                  onClick={async () => {
+                    if (!coverUploadUrl || !coverCroppedAreaPixels) return;
+                    try {
+                      setCoverSaving(true);
+                      setCoverError(null);
+                      const croppedDataUrl = await getCroppedImg(
+                        coverUploadUrl,
+                        coverCroppedAreaPixels,
+                      );
+                      const res = await fetch(croppedDataUrl);
+                      const blob = await res.blob();
+                      const file = new File([blob], "cover-photo.png", {
+                        type: "image/png",
+                      });
+                      const url = await uploadImage(file);
+                      const updated = await apiFetch<any>("/profiles/me", {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ cover_image_url: url }),
+                      });
+                      setCurrentProfile(updated);
+                      setProfile(updated);
+                      setCoverUploadUrl(null);
+                      setCoverModalOpen(false);
+                    } catch (err: any) {
+                      setCoverError(
+                        err?.message || "Failed to save cover photo",
+                      );
+                    } finally {
+                      setCoverSaving(false);
+                    }
+                  }}
+                >
+                  {coverSaving ? "Saving..." : "Save changes"}
+                </Button>
+              </div>
             </div>
+          ) : (
+            <>
+              <div className="flex flex-col items-center justify-center py-6">
+                <div className="w-full aspect-[3/1] max-h-40 rounded-lg overflow-hidden bg-muted">
+                  {(profile?.cover_image_url || profile?.banner) &&
+                  !(profile?.cover_image_url || profile?.banner)?.includes(
+                    "placeholder",
+                  ) ? (
+                    <img
+                      src={profile?.cover_image_url || profile?.banner || ""}
+                      alt="Current cover"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">
+                      No cover photo
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="grid grid-cols-4 gap-2 mt-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex flex-col h-auto py-3 gap-1"
+                  onClick={() => {
+                    const url = profile?.cover_image_url || profile?.banner;
+                    if (url && !url.includes("placeholder")) {
+                      setCoverUploadUrl(url);
+                    } else {
+                      document.getElementById("cover-upload")?.click();
+                    }
+                  }}
+                >
+                  <Pencil className="h-5 w-5" />
+                  <span className="text-xs">Edit</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex flex-col h-auto py-3 gap-1"
+                  onClick={() =>
+                    document.getElementById("cover-upload")?.click()
+                  }
+                >
+                  <Camera className="h-5 w-5" />
+                  <span className="text-xs">Upload</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex flex-col h-auto py-3 gap-1 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  onClick={async () => {
+                    try {
+                      const updated = {
+                        ...currentProfile,
+                        cover_image_url: null,
+                        banner: null,
+                      };
+                      setCurrentProfile(updated);
+                      setProfile(updated);
+                      await apiFetch<any>("/profiles/me", {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ cover_image_url: null }),
+                      }).catch(() => null);
+                      setCoverModalOpen(false);
+                    } catch (err) {
+                      console.error("[profile] Failed to delete cover:", err);
+                    }
+                  }}
+                >
+                  <Trash2 className="h-5 w-5" />
+                  <span className="text-xs">Delete</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex flex-col h-auto py-3 gap-1"
+                  onClick={() => {
+                    const url = profile?.cover_image_url || profile?.banner;
+                    if (url && !url.includes("placeholder")) {
+                      setCoverUploadUrl(url);
+                    } else {
+                      document.getElementById("cover-upload")?.click();
+                    }
+                  }}
+                >
+                  <Crop className="h-5 w-5" />
+                  <span className="text-xs">Crop</span>
+                </Button>
+              </div>
+            </>
           )}
-          <div className="mt-6 flex justify-end gap-2">
-            <Button
-              variant="destructive"
-              size="sm"
-              className="bg-destructive text-white hover:bg-destructive/80"
-              onClick={() => {
-                setAvatarPreview(null);
-                setAvatarModalOpen(false);
-              }}
-            >
-              Delete
-            </Button>
-            <Button
-              size="sm"
-              disabled={!avatarUploadUrl || !avatarCroppedAreaPixels}
-              onClick={async () => {
-                if (!avatarUploadUrl || !avatarCroppedAreaPixels) return;
-                const cropped = await getCroppedImg(
-                  avatarUploadUrl,
-                  avatarCroppedAreaPixels,
-                );
-                setAvatarPreview(cropped);
-                setAvatarModalOpen(false);
-              }}
-            >
-              Save changes
-            </Button>
-          </div>
         </DialogContent>
       </Dialog>
-      <div className="max-w-7xl mx-auto p-6">
+      <Dialog
+        open={!!imagePreviewUrl}
+        onOpenChange={() => setImagePreviewUrl(null)}
+      >
+        <DialogContent className="max-w-4xl p-0 overflow-hidden bg-transparent border-0 shadow-none [&>button]:hidden">
+          {imagePreviewUrl && (
+            <div className="relative">
+              <img
+                src={imagePreviewUrl}
+                alt="Preview"
+                className="w-full h-auto max-h-[90vh] object-contain rounded-lg"
+                onClick={() => setImagePreviewUrl(null)}
+              />
+              <button
+                type="button"
+                onClick={() => setImagePreviewUrl(null)}
+                className="absolute top-4 right-4 h-10 w-10 rounded-full bg-black/80 text-white flex items-center justify-center hover:bg-black shadow-lg ring-2 ring-white/30"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" strokeWidth={2.5} />
+              </button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+      <div className="max-w-7xl mx-auto px-6 pt-0 pb-6">
         {/* Profile Header */}
-        <Card className="overflow-hidden mb-4 relative gap-0">
+        <Card className="overflow-hidden mb-4 relative gap-0 pt-0">
           {/* Banner */}
           <div className="h-56 bg-gradient-to-r from-primary via-accent to-primary bg-[length:200%_100%] animate-gradient relative group">
+            {profile?.cover_image_url || profile?.banner ? (
+              <img
+                src={
+                  profile.cover_image_url ||
+                  profile.banner ||
+                  "/placeholder.svg"
+                }
+                alt="Cover"
+                className="absolute inset-0 h-full w-full object-cover cursor-pointer"
+                role="button"
+                tabIndex={0}
+                onClick={() => {
+                  const url = profile?.cover_image_url || profile?.banner;
+                  if (url && !url.includes("placeholder"))
+                    setImagePreviewUrl(url);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    const url = profile?.cover_image_url || profile?.banner;
+                    if (url && !url.includes("placeholder"))
+                      setImagePreviewUrl(url);
+                  }
+                }}
+              />
+            ) : null}
+            <div className="absolute inset-0 bg-black/10 pointer-events-none" />
             {/* Edit Cover Photo Button */}
             {isSelfProfile && (
               <Button
                 size="sm"
                 variant="secondary"
                 className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity gap-2"
-                onClick={() => document.getElementById("cover-upload")?.click()}
+                disabled={coverSaving}
+                onClick={() => setCoverModalOpen(true)}
               >
                 <Camera className="h-4 w-4" />
                 Edit Cover
               </Button>
             )}
-            <Input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              id="cover-upload"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) {
-                  console.log("[v0] Cover photo selected:", file.name);
-                }
-              }}
-            />
           </div>
           <div className="px-6 pb-6">
             <div className="flex flex-col md:flex-row md:items-start md:justify-start relative z-10 mb-6">
               <div className="flex flex-col md:flex-row items-start gap-4">
-                <div className="relative -mt-20 z-20 group w-fit">
+                <div
+                  className="relative -mt-20 z-20 group w-fit cursor-pointer"
+                  role="button"
+                  tabIndex={0}
+                  onClick={(e) => {
+                    if ((e.target as HTMLElement).closest("button")) return;
+                    const url =
+                      avatarPreview ||
+                      currentProfile?.profile_image_url ||
+                      currentProfile?.profile_image ||
+                      currentProfile?.avatar ||
+                      "/placeholder.svg";
+                    if (url && !url.includes("placeholder"))
+                      setImagePreviewUrl(url);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key !== "Enter" && e.key !== " ") return;
+                    if ((e.target as HTMLElement).closest("button")) return;
+                    const url =
+                      avatarPreview ||
+                      currentProfile?.profile_image_url ||
+                      currentProfile?.profile_image ||
+                      currentProfile?.avatar ||
+                      "/placeholder.svg";
+                    if (url && !url.includes("placeholder"))
+                      setImagePreviewUrl(url);
+                  }}
+                >
                   <Avatar className="h-36 w-36 border-4 border-card ring-4 ring-background shadow-xl group">
                     <AvatarImage
                       src={
@@ -748,7 +1169,10 @@ export default function ProfilePage() {
                       size="icon"
                       variant="secondary"
                       className="absolute bottom-2 right-2 h-10 w-10 rounded-full bg-white border shadow-md flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={() => setAvatarModalOpen(true)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setAvatarModalOpen(true);
+                      }}
                     >
                       <Pencil className="h-5 w-5 text-muted-foreground" />
                     </Button>
@@ -756,10 +1180,10 @@ export default function ProfilePage() {
                 </div>
               </div>
               <div className="mt--2 ml-2">
-                <h1 className="text-lg font-bold text-foreground/80 mt-2">
+                <h1 className="text-2xl font-bold text-foreground/80 mt-2">
                   {profileData.name || "John Doe"}
                 </h1>
-                <p className="text-lg text-foreground/80 font-medium">
+                <p className="text-base text-foreground/80 font-medium">
                   {profileData.title}
                 </p>
                 <p className="text-sm text-muted-foreground mt-1">
@@ -792,7 +1216,8 @@ export default function ProfilePage() {
                     }
                     placeholder="Tell us about yourself"
                     className="resize-none min-h-[80px] text-base"
-                    maxLength={500}
+                    maxLength={5000}
+                    autoFocus
                   />
                   <div className="flex justify-end gap-2">
                     <Button
@@ -979,257 +1404,262 @@ export default function ProfilePage() {
                     }
                   >
                     {userPosts.map((post) => {
-                    const author = getPostUser(post.author_id);
-                    const isLiked = likedPosts.has(post.id);
-                    const isSaved = savedPosts.has(post.id);
-                    const normalizedContent = post.content?.trim() ?? "";
-                    const paragraphs = normalizedContent
-                      .split(/\n\s*\n/)
-                      .map((p) => p.trim())
-                      .filter(Boolean);
-                    const hasLongContent = paragraphs.length > 2;
-                    const isExpanded = expandedPosts.has(post.id);
-                    const displayedParagraphs =
-                      !hasLongContent || isExpanded
-                        ? paragraphs
-                        : paragraphs.slice(0, 2);
-                    const isOwnPost =
-                      isSelfProfile &&
-                      String(post.author_id) === String(profileUserId);
+                      const author = getPostUser(post.author_id);
+                      const isLiked = likedPosts.has(post.id);
+                      const isSaved = savedPosts.has(post.id);
+                      const normalizedContent = post.content?.trim() ?? "";
+                      const paragraphs = normalizedContent
+                        .split(/\n\s*\n/)
+                        .map((p) => p.trim())
+                        .filter(Boolean);
+                      const hasLongContent = paragraphs.length > 2;
+                      const isExpanded = expandedPosts.has(post.id);
+                      const displayedParagraphs =
+                        !hasLongContent || isExpanded
+                          ? paragraphs
+                          : paragraphs.slice(0, 2);
+                      const isOwnPost =
+                        isSelfProfile &&
+                        String(post.author_id) === String(profileUserId);
 
-                    return (
-                      <Card
-                        key={post.id}
-                        className={
-                          showAllProfilePosts
-                            ? "p-5 shadow-sm border-border/50 hover:shadow-md transition-shadow duration-200"
-                            : "p-5 shadow-sm border-border/50 hover:shadow-md transition-shadow duration-200 min-w-[320px] max-w-[380px] flex-shrink-0 snap-start overflow-hidden flex flex-col"
-                        }
-                      >
-                        <div className="flex items-start justify-between mb-4">
-                          <div className="flex gap-3">
-                            <Avatar className="h-11 w-11 ring-2 ring-border">
-                              <AvatarImage
-                                src={author?.avatar || "/placeholder.svg"}
-                              />
-                              <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                                {author?.name?.charAt(0)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <Link href={`/users/${author?.id}`}>
-                                <p className="font-semibold text-foreground hover:text-primary cursor-pointer transition-colors">
-                                  {author?.name}
+                      return (
+                        <Card
+                          key={post.id}
+                          className={
+                            showAllProfilePosts
+                              ? "p-5 shadow-sm border-border/50 hover:shadow-md transition-shadow duration-200"
+                              : "p-5 shadow-sm border-border/50 hover:shadow-md transition-shadow duration-200 min-w-[320px] max-w-[380px] flex-shrink-0 snap-start overflow-hidden flex flex-col"
+                          }
+                        >
+                          <div className="flex items-start justify-between mb-4">
+                            <div className="flex gap-3">
+                              <Avatar className="h-11 w-11 ring-2 ring-border">
+                                <AvatarImage
+                                  src={author?.avatar || "/placeholder.svg"}
+                                />
+                                <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                                  {author?.name?.charAt(0)}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <Link href={`/users/${author?.id}`}>
+                                  <p className="font-semibold text-foreground hover:text-primary cursor-pointer transition-colors">
+                                    {author?.name}
+                                  </p>
+                                </Link>
+                                <p className="text-sm text-muted-foreground leading-tight">
+                                  {author?.title}
+                                  {author?.company
+                                    ? ` at ${author.company}`
+                                    : ""}
                                 </p>
-                              </Link>
-                              <p className="text-sm text-muted-foreground leading-tight">
-                                {author?.title}
-                                {author?.company ? ` at ${author.company}` : ""}
+                                <p className="text-xs text-muted-foreground/70 mt-0.5">
+                                  {formatPostDate(post.created_at)}
+                                </p>
+                              </div>
+                            </div>
+                            {isOwnPost && (
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 rounded-lg text-muted-foreground hover:bg-secondary"
+                                  >
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem
+                                    onClick={() => openEditPostDialog(post)}
+                                    className="cursor-pointer"
+                                  >
+                                    Edit post
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => handleDeletePost(post.id)}
+                                    className="text-destructive focus:text-destructive cursor-pointer"
+                                  >
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Delete post
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            )}
+                          </div>
+                          <div
+                            className={
+                              showAllProfilePosts
+                                ? "mb-4 space-y-2 text-foreground leading-relaxed text-sm"
+                                : "mb-4 space-y-2 text-foreground leading-relaxed text-sm max-h-[140px] overflow-y-auto"
+                            }
+                          >
+                            {displayedParagraphs.length > 0 ? (
+                              displayedParagraphs.map((paragraph, index) => {
+                                const isLast =
+                                  index === displayedParagraphs.length - 1;
+                                const showToggle = hasLongContent && isLast;
+                                return (
+                                  <p
+                                    key={`${post.id}-p-${index}`}
+                                    className="whitespace-pre-wrap"
+                                  >
+                                    {paragraph}
+                                    {showToggle && (
+                                      <>
+                                        {" "}
+                                        <button
+                                          type="button"
+                                          className="text-primary hover:underline font-medium"
+                                          onClick={() =>
+                                            togglePostExpanded(post.id)
+                                          }
+                                        >
+                                          {isExpanded ? "See less" : "See more"}
+                                        </button>
+                                      </>
+                                    )}
+                                  </p>
+                                );
+                              })
+                            ) : (
+                              <p className="whitespace-pre-wrap">
+                                {post.content}
                               </p>
-                              <p className="text-xs text-muted-foreground/70 mt-0.5">
-                                {formatPostDate(post.created_at)}
-                              </p>
+                            )}
+                          </div>
+                          {post.image && (
+                            <div className="mb-4 rounded-lg overflow-hidden border border-border/50">
+                              <img
+                                src={post.image}
+                                alt="Post"
+                                className="w-full h-auto max-h-[200px] object-cover"
+                              />
+                            </div>
+                          )}
+                          <div className="flex items-center justify-between text-sm text-muted-foreground py-2 border-y border-border/50">
+                            <span>{post.likes + (isLiked ? 1 : 0)} likes</span>
+                            <div className="flex gap-4">
+                              <span>{post.comments} comments</span>
+                              <span>{post.shares} shares</span>
                             </div>
                           </div>
-                          {isOwnPost && (
+                          <div className="flex items-center justify-between pt-2 -mx-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => togglePostLike(post.id)}
+                              className={`flex-1 h-10 rounded-lg gap-2 font-medium ${
+                                isLiked
+                                  ? "text-primary hover:bg-primary/10"
+                                  : "text-muted-foreground hover:text-primary hover:bg-primary/5"
+                              }`}
+                            >
+                              <ThumbsUp
+                                className={`h-[18px] w-[18px] ${isLiked ? "fill-current" : ""}`}
+                              />
+                              <span>Like</span>
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => togglePostComments(post.id)}
+                              className="flex-1 h-10 rounded-lg gap-2 text-muted-foreground hover:text-primary hover:bg-primary/5 font-medium"
+                            >
+                              <MessageCircle className="h-[18px] w-[18px]" />
+                              <span>Comment</span>
+                            </Button>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <Button
                                   variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 rounded-lg text-muted-foreground hover:bg-secondary"
+                                  size="sm"
+                                  className="flex-1 h-10 rounded-lg gap-2 text-muted-foreground hover:text-primary hover:bg-primary/5 font-medium"
                                 >
-                                  <MoreHorizontal className="h-4 w-4" />
+                                  <Share2 className="h-[18px] w-[18px]" />
+                                  <span>Share</span>
                                 </Button>
                               </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
+                              <DropdownMenuContent align="center">
                                 <DropdownMenuItem
-                                  onClick={() => openEditPostDialog(post)}
+                                  onClick={() => handleSharePostToFeed(post)}
                                   className="cursor-pointer"
                                 >
-                                  Edit post
+                                  <Repeat2 className="mr-2 h-4 w-4" />
+                                  Share to feed
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
-                                  onClick={() => handleDeletePost(post.id)}
-                                  className="text-destructive focus:text-destructive cursor-pointer"
+                                  onClick={() => handleCopyPostLink(post.id)}
+                                  className="cursor-pointer"
                                 >
-                                  <Trash2 className="mr-2 h-4 w-4" />
-                                  Delete post
+                                  <LinkIcon className="mr-2 h-4 w-4" />
+                                  Copy link
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
-                          )}
-                        </div>
-                        <div
-                          className={
-                            showAllProfilePosts
-                              ? "mb-4 space-y-2 text-foreground leading-relaxed text-sm"
-                              : "mb-4 space-y-2 text-foreground leading-relaxed text-sm max-h-[140px] overflow-y-auto"
-                          }
-                        >
-                          {displayedParagraphs.length > 0 ? (
-                            displayedParagraphs.map((paragraph, index) => {
-                              const isLast =
-                                index === displayedParagraphs.length - 1;
-                              const showToggle =
-                                hasLongContent && isLast;
-                              return (
-                                <p
-                                  key={`${post.id}-p-${index}`}
-                                  className="whitespace-pre-wrap"
-                                >
-                                  {paragraph}
-                                  {showToggle && (
-                                    <>
-                                      {" "}
-                                      <button
-                                        type="button"
-                                        className="text-primary hover:underline font-medium"
-                                        onClick={() =>
-                                          togglePostExpanded(post.id)
-                                        }
-                                      >
-                                        {isExpanded ? "See less" : "See more"}
-                                      </button>
-                                    </>
-                                  )}
-                                </p>
-                              );
-                            })
-                          ) : (
-                            <p className="whitespace-pre-wrap">{post.content}</p>
-                          )}
-                        </div>
-                        {post.image && (
-                          <div className="mb-4 rounded-lg overflow-hidden border border-border/50">
-                            <img
-                              src={post.image}
-                              alt="Post"
-                              className="w-full h-auto max-h-[200px] object-cover"
-                            />
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => togglePostSave(post.id)}
+                              className={`h-10 w-10 rounded-lg ${
+                                isSaved
+                                  ? "text-primary"
+                                  : "text-muted-foreground hover:text-primary hover:bg-primary/5"
+                              }`}
+                            >
+                              <Bookmark
+                                className={`h-[18px] w-[18px] ${isSaved ? "fill-current" : ""}`}
+                              />
+                            </Button>
                           </div>
-                        )}
-                        <div className="flex items-center justify-between text-sm text-muted-foreground py-2 border-y border-border/50">
-                          <span>
-                            {post.likes + (isLiked ? 1 : 0)} likes
-                          </span>
-                          <div className="flex gap-4">
-                            <span>{post.comments} comments</span>
-                            <span>{post.shares} shares</span>
-                          </div>
-                        </div>
-                        <div className="flex items-center justify-between pt-2 -mx-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => togglePostLike(post.id)}
-                            className={`flex-1 h-10 rounded-lg gap-2 font-medium ${
-                              isLiked
-                                ? "text-primary hover:bg-primary/10"
-                                : "text-muted-foreground hover:text-primary hover:bg-primary/5"
-                            }`}
-                          >
-                            <ThumbsUp
-                              className={`h-[18px] w-[18px] ${isLiked ? "fill-current" : ""}`}
-                            />
-                            <span>Like</span>
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => togglePostComments(post.id)}
-                            className="flex-1 h-10 rounded-lg gap-2 text-muted-foreground hover:text-primary hover:bg-primary/5 font-medium"
-                          >
-                            <MessageCircle className="h-[18px] w-[18px]" />
-                            <span>Comment</span>
-                          </Button>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="flex-1 h-10 rounded-lg gap-2 text-muted-foreground hover:text-primary hover:bg-primary/5 font-medium"
-                              >
-                                <Share2 className="h-[18px] w-[18px]" />
-                                <span>Share</span>
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="center">
-                              <DropdownMenuItem
-                                onClick={() => handleSharePostToFeed(post)}
-                                className="cursor-pointer"
-                              >
-                                <Repeat2 className="mr-2 h-4 w-4" />
-                                Share to feed
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => handleCopyPostLink(post.id)}
-                                className="cursor-pointer"
-                              >
-                                <LinkIcon className="mr-2 h-4 w-4" />
-                                Copy link
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => togglePostSave(post.id)}
-                            className={`h-10 w-10 rounded-lg ${
-                              isSaved
-                                ? "text-primary"
-                                : "text-muted-foreground hover:text-primary hover:bg-primary/5"
-                            }`}
-                          >
-                            <Bookmark
-                              className={`h-[18px] w-[18px] ${isSaved ? "fill-current" : ""}`}
-                            />
-                          </Button>
-                        </div>
-                        {showComments === post.id && (
-                          <div className="border-t border-border/50 pt-4 space-y-4">
-                            <div className="flex gap-3">
-                              <Avatar className="h-9 w-9 ring-2 ring-border flex-shrink-0">
-                                <AvatarImage
-                                  src={
-                                    currentProfile?.profile_image_url ||
-                                    "/placeholder.svg"
-                                  }
-                                />
-                                <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
-                                  {(profileData.name || "U").charAt(0)}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div className="flex-1 space-y-2">
-                                <Textarea
-                                  placeholder="Write a comment..."
-                                  value={commentText}
-                                  onChange={(e) => setCommentText(e.target.value)}
-                                  className="resize-none min-h-[60px] text-sm border-0 bg-secondary/30 rounded-xl p-3 focus-visible:ring-1 focus-visible:ring-primary/30"
-                                />
-                                <div className="flex justify-end gap-2">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => setShowComments(null)}
-                                  >
-                                    Cancel
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    onClick={() => handleAddPostComment(post.id)}
-                                    disabled={!commentText.trim()}
-                                  >
-                                    Comment
-                                  </Button>
+                          {showComments === post.id && (
+                            <div className="border-t border-border/50 pt-4 space-y-4">
+                              <div className="flex gap-3">
+                                <Avatar className="h-9 w-9 ring-2 ring-border flex-shrink-0">
+                                  <AvatarImage
+                                    src={
+                                      currentProfile?.profile_image_url ||
+                                      "/placeholder.svg"
+                                    }
+                                  />
+                                  <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
+                                    {(profileData.name || "U").charAt(0)}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div className="flex-1 space-y-2">
+                                  <Textarea
+                                    placeholder="Write a comment..."
+                                    value={commentText}
+                                    onChange={(e) =>
+                                      setCommentText(e.target.value)
+                                    }
+                                    className="resize-none min-h-[60px] text-sm border-0 bg-secondary/30 rounded-xl p-3 focus-visible:ring-1 focus-visible:ring-primary/30"
+                                  />
+                                  <div className="flex justify-end gap-2">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => setShowComments(null)}
+                                    >
+                                      Cancel
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      onClick={() =>
+                                        handleAddPostComment(post.id)
+                                      }
+                                      disabled={!commentText.trim()}
+                                    >
+                                      Comment
+                                    </Button>
+                                  </div>
                                 </div>
                               </div>
                             </div>
-                          </div>
-                        )}
-                      </Card>
-                    );
-                  })}
+                          )}
+                        </Card>
+                      );
+                    })}
                   </div>
                   <div className="flex justify-center mt-4">
                     <Button

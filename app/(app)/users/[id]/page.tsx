@@ -9,7 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Edit3, Check, X, Camera, Plus } from 'lucide-react';
-import { apiFetch } from '@/lib/api';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { apiFetch, uploadImage } from '@/lib/api';
 import { getCurrentUser } from '@/lib/auth';
 
 interface UserProfile {
@@ -40,6 +41,7 @@ export default function UserProfilePage() {
   const isOwnProfile = currentUser?.id === userId;
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -202,21 +204,74 @@ export default function UserProfilePage() {
 
   return (
     <div className="min-h-screen bg-secondary/20">
-      <div className="max-w-5xl mx-auto p-6">
+      <Dialog open={!!imagePreviewUrl} onOpenChange={() => setImagePreviewUrl(null)}>
+        <DialogContent className="max-w-4xl p-0 overflow-hidden bg-transparent border-0 shadow-none [&>button]:hidden">
+          {imagePreviewUrl && (
+            <div className="relative">
+              <img
+                src={imagePreviewUrl}
+                alt="Preview"
+                className="w-full h-auto max-h-[90vh] object-contain rounded-lg"
+                onClick={() => setImagePreviewUrl(null)}
+              />
+              <button
+                type="button"
+                onClick={() => setImagePreviewUrl(null)}
+                className="absolute top-4 right-4 h-10 w-10 rounded-full bg-black/80 text-white flex items-center justify-center hover:bg-black shadow-lg ring-2 ring-white/30"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" strokeWidth={2.5} />
+              </button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+      <div className="max-w-5xl mx-auto px-6 pt-0 pb-6">
         {/* Profile Header */}
-        <Card className="overflow-hidden mb-6 relative">
+        <Card className="overflow-hidden mb-6 relative pt-0">
           {/* Banner */}
-          <div className="h-56 bg-gradient-to-r from-primary via-accent to-primary bg-[length:200%_100%] animate-gradient relative">
+          <div className="h-56 relative bg-gradient-to-r from-primary via-accent to-primary bg-[length:200%_100%] animate-gradient">
+            {profile?.cover_image_url || profile?.banner ? (
+              <img
+                src={profile.cover_image_url || profile.banner || '/placeholder.svg'}
+                alt="Cover"
+                className="absolute inset-0 h-full w-full object-cover cursor-pointer"
+                role="button"
+                tabIndex={0}
+                onClick={() => {
+                  const url = profile?.cover_image_url || profile?.banner;
+                  if (url && !url.includes('placeholder')) setImagePreviewUrl(url);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    const url = profile?.cover_image_url || profile?.banner;
+                    if (url && !url.includes('placeholder')) setImagePreviewUrl(url);
+                  }
+                }}
+              />
+            ) : null}
+            <div className="absolute inset-0 bg-black/10 pointer-events-none" />
             {isEditMode && (
               <Input
                 type="file"
                 accept="image/*"
                 className="hidden"
                 id="cover-upload"
-                onChange={(e) => {
+                onChange={async (e) => {
                   const file = e.target.files?.[0];
-                  if (file) {
-                    console.log('[v0] Cover photo selected:', file.name);
+                  if (!file) return;
+                  try {
+                    const url = await uploadImage(file);
+                    const updated = await apiFetch<any>('/profiles/me', {
+                      method: 'PUT',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ cover_image_url: url }),
+                    });
+                    if (updated) setProfile(updated);
+                  } catch (err) {
+                    console.error('[profile] Failed to save cover photo:', err);
+                  } finally {
+                    e.target.value = '';
                   }
                 }}
               />
@@ -227,7 +282,22 @@ export default function UserProfilePage() {
           <div className="px-6 pb-6">
             <div className="flex flex-col md:flex-row md:items-start md:justify-between -mt-20 relative z-10 mb-6">
               <div className="flex flex-col md:flex-row items-start gap-4">
-                <div className="relative">
+                <div
+                  className="relative cursor-pointer"
+                  role="button"
+                  tabIndex={0}
+                  onClick={(e) => {
+                    if ((e.target as HTMLElement).closest('button')) return;
+                    const url = profile?.profile_image_url || profile?.profile_image || profile?.avatar || "/placeholder.svg";
+                    if (url && !url.includes('placeholder')) setImagePreviewUrl(url);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key !== 'Enter' && e.key !== ' ') return;
+                    if ((e.target as HTMLElement).closest('button')) return;
+                    const url = profile?.profile_image_url || profile?.profile_image || profile?.avatar || "/placeholder.svg";
+                    if (url && !url.includes('placeholder')) setImagePreviewUrl(url);
+                  }}
+                >
                   <Avatar className="h-36 w-36 border-4 border-card ring-4 ring-background shadow-xl">
                     <AvatarImage src={profile?.profile_image_url || profile?.profile_image || profile?.avatar || "/placeholder.svg"} />
                     <AvatarFallback>{(formData.name || 'U').charAt(0)}</AvatarFallback>
@@ -250,7 +320,10 @@ export default function UserProfilePage() {
                         size="icon"
                         variant="secondary"
                         className="absolute bottom-0 right-0 h-8 w-8 rounded-full shadow-md"
-                        onClick={() => document.getElementById('avatar-upload')?.click()}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          document.getElementById('avatar-upload')?.click();
+                        }}
                       >
                         <Camera className="h-4 w-4" />
                       </Button>
