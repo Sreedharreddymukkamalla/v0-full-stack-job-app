@@ -260,9 +260,6 @@ export default function UsersPage() {
         sessionStorage.removeItem("suggestions_cache_ts");
       } catch {}
       setSuggested((prev) => prev.filter((p) => p.id !== userId));
-      setPending((prev) =>
-        prev.filter((p) => p.connectionId !== createdConnectionId),
-      );
 
       console.log("Connection request sent");
     } catch (e) {
@@ -321,7 +318,11 @@ export default function UsersPage() {
     }
   };
 
-  const handleReject = async (connectionId?: number, isSent?: boolean) => {
+  const handleReject = async (
+    connectionId?: number,
+    isSent?: boolean,
+    cancelledUser?: any,
+  ) => {
     if (!connectionId) return;
     try {
       if (isSent) {
@@ -335,8 +336,31 @@ export default function UsersPage() {
         });
         console.log("Request ignored");
       }
-      setPending((prev) => prev.filter((p) => p.connectionId !== connectionId));
-      // also remove any matching invite entry
+      setPending((prev) =>
+        prev.filter(
+          (p) => p.connectionId !== connectionId && p.id !== connectionId,
+        ),
+      );
+      if (isSent && cancelledUser) {
+        setSuggested((s) => {
+          const targetId = cancelledUser.userId ?? cancelledUser.id;
+          if (s.some((u) => (u.userId ?? u.id) === targetId)) return s;
+          return [
+            ...s,
+            {
+              id: targetId,
+              userId: targetId,
+              name: cancelledUser.name || "",
+              title: cancelledUser.title || "",
+              company: cancelledUser.company || "",
+              avatar: cancelledUser.avatar || "/placeholder.svg",
+              banner: cancelledUser.banner || "",
+              skills: cancelledUser.skills || [],
+              type: "suggested",
+            },
+          ];
+        });
+      }
       setInvites((prev) =>
         prev.filter(
           (i) => i.id !== connectionId && i.connectionId !== connectionId,
@@ -742,7 +766,7 @@ export default function UsersPage() {
                         size="sm"
                         className="flex-1 bg-transparent text-red-600 hover:bg-red-600 hover:text-white transition-colors cursor-pointer"
                         onClick={() =>
-                          handleReject(user.connectionId ?? user.id, false)
+                          handleReject(user.connectionId ?? user.id, true, user)
                         }
                       >
                         Cancel

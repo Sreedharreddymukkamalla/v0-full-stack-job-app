@@ -1,14 +1,32 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Edit3, Check, X, Camera, Plus } from "lucide-react";
+import {
+  Edit3,
+  Check,
+  X,
+  Camera,
+  Plus,
+  ThumbsUp,
+  MessageCircle,
+  Share2,
+  Bookmark,
+  Link as LinkIcon,
+} from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { apiFetch, uploadImage } from "@/lib/api";
 import { getCurrentUser } from "@/lib/auth";
@@ -34,8 +52,20 @@ interface UserProfile {
   };
 }
 
+interface Post {
+  id: string;
+  author_id: string;
+  content: string;
+  created_at: string;
+  likes: number;
+  comments: number;
+  shares: number;
+  image?: string | null;
+}
+
 export default function UserProfilePage() {
   const params = useParams();
+  const router = useRouter();
   const userId = params.id as string;
   const currentUser = getCurrentUser();
   const isOwnProfile = currentUser?.id === userId;
@@ -55,6 +85,13 @@ export default function UserProfilePage() {
     experiences: [] as any[],
     education: [] as any[],
   });
+
+  const [userPosts, setUserPosts] = useState<Post[]>([]);
+  const [postsLoading, setPostsLoading] = useState(true);
+  const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set());
+  const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
+  const [savedPosts, setSavedPosts] = useState<Set<string>>(new Set());
+  const [showAllProfilePosts, setShowAllProfilePosts] = useState(false);
 
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -117,6 +154,43 @@ export default function UserProfilePage() {
     }
   }, [userId]);
 
+  useEffect(() => {
+    const fetchUserPosts = async () => {
+      if (!userId) {
+        setPostsLoading(false);
+        return;
+      }
+      try {
+        setPostsLoading(true);
+        const posts = await apiFetch<any[]>(`/posts/user/${userId}`);
+        if (Array.isArray(posts)) {
+          const transformed: Post[] = posts.map((p: any) => ({
+            id: String(p.id),
+            author_id: String(p.author_id ?? userId),
+            content: p.content || "",
+            created_at: p.created_at || new Date().toISOString(),
+            likes: p.like_count ?? 0,
+            comments: p.comment_count ?? 0,
+            shares: 0,
+            image: p.media_url ?? null,
+          }));
+          setUserPosts(transformed);
+          const initialLiked = new Set<string>();
+          posts.forEach((p: any) => {
+            if (p.liked_by_me) initialLiked.add(String(p.id));
+          });
+          setLikedPosts(initialLiked);
+        }
+      } catch (e) {
+        console.error("[user-profile] Error fetching user posts:", e);
+        setUserPosts([]);
+      } finally {
+        setPostsLoading(false);
+      }
+    };
+    fetchUserPosts();
+  }, [userId]);
+
   const handleSave = () => {
     console.log("[v0] Saving profile:", formData);
     setIsEditMode(false);
@@ -171,6 +245,54 @@ export default function UserProfilePage() {
       ...formData,
       experiences: formData.experiences.filter((exp) => exp.id !== id),
     });
+  };
+
+  const formatPostDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffMins < 1) return "just now";
+    if (diffMins < 60) return `${diffMins}m`;
+    if (diffHours < 24) return `${diffHours}h`;
+    if (diffDays < 7) return `${diffDays}d`;
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  };
+
+  const togglePostLike = (postId: string) => {
+    setLikedPosts((prev) => {
+      const next = new Set(prev);
+      if (next.has(postId)) next.delete(postId);
+      else next.add(postId);
+      return next;
+    });
+  };
+
+  const togglePostSave = (postId: string) => {
+    setSavedPosts((prev) => {
+      const next = new Set(prev);
+      if (next.has(postId)) next.delete(postId);
+      else next.add(postId);
+      return next;
+    });
+  };
+
+  const togglePostExpanded = (postId: string) => {
+    setExpandedPosts((prev) => {
+      const next = new Set(prev);
+      if (next.has(postId)) next.delete(postId);
+      else next.add(postId);
+      return next;
+    });
+  };
+
+  const handleCopyPostLink = (postId: string) => {
+    const link = `${typeof window !== "undefined" ? window.location?.origin : ""}/posts/${postId}`;
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(link);
+    }
   };
 
   if (loading) {
@@ -427,6 +549,246 @@ export default function UserProfilePage() {
                 <p className="text-foreground text-base leading-relaxed">
                   {formData.bio}
                 </p>
+              )}
+            </div>
+
+            {/* Posts Section */}
+            <div className="mb-6">
+              <h3 className="font-semibold text-foreground mb-3">Posts</h3>
+              {postsLoading ? (
+                <div className="flex gap-4 overflow-x-auto pb-2 -mx-1 scrollbar-thin">
+                  {[1, 2].map((i) => (
+                    <Card
+                      key={i}
+                      className="p-5 animate-pulse border-border/50 min-w-[320px] max-w-[380px] flex-shrink-0"
+                    >
+                      <div className="flex gap-4">
+                        <div className="h-11 w-11 rounded-full bg-muted" />
+                        <div className="flex-1 space-y-3">
+                          <div className="h-4 bg-muted rounded-lg w-1/3" />
+                          <div className="h-3 bg-muted rounded-lg w-1/4" />
+                          <div className="h-20 bg-muted rounded-lg w-full mt-4" />
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              ) : userPosts.length === 0 ? (
+                <Card className="p-12 border-border/50 flex flex-col items-center justify-center text-center">
+                  <p className="text-muted-foreground">No posts yet</p>
+                </Card>
+              ) : (
+                <>
+                  <div
+                    className={
+                      showAllProfilePosts
+                        ? "space-y-4"
+                        : "flex gap-4 overflow-x-auto pb-2 -mx-1 scrollbar-thin snap-x snap-mandatory"
+                    }
+                  >
+                    {userPosts.map((post) => {
+                      const isLiked = likedPosts.has(post.id);
+                      const isSaved = savedPosts.has(post.id);
+                      const normalizedContent = post.content?.trim() ?? "";
+                      const paragraphs = normalizedContent
+                        .split(/\n\s*\n/)
+                        .map((p) => p.trim())
+                        .filter(Boolean);
+                      const hasLongContent = paragraphs.length > 2;
+                      const isExpanded = expandedPosts.has(post.id);
+                      const displayedParagraphs =
+                        !hasLongContent || isExpanded
+                          ? paragraphs
+                          : paragraphs.slice(0, 2);
+
+                      return (
+                        <Card
+                          key={post.id}
+                          className={
+                            showAllProfilePosts
+                              ? "p-5 shadow-sm border-border/50 hover:shadow-md transition-shadow duration-200"
+                              : "p-5 shadow-sm border-border/50 hover:shadow-md transition-shadow duration-200 min-w-[320px] max-w-[380px] min-h-[420px] flex-shrink-0 snap-start overflow-hidden flex flex-col"
+                          }
+                        >
+                          <div className="flex items-start justify-between mb-4 shrink-0">
+                            <div className="flex gap-3">
+                              <Avatar className="h-11 w-11 ring-2 ring-border">
+                                <AvatarImage
+                                  src={
+                                    profile?.profile_image_url ||
+                                    profile?.profile_image ||
+                                    profile?.avatar ||
+                                    "/placeholder.svg"
+                                  }
+                                />
+                                <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                                  {(formData.name || "U").charAt(0)}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <Link href={`/users/${userId}`}>
+                                  <p className="font-semibold text-foreground hover:text-primary cursor-pointer transition-colors">
+                                    {formData.name || "User"}
+                                  </p>
+                                </Link>
+                                <p className="text-sm text-muted-foreground leading-tight">
+                                  {formData.title || ""}
+                                </p>
+                                <p className="text-xs text-muted-foreground/70 mt-0.5">
+                                  {formatPostDate(post.created_at)}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                          <div
+                            className={
+                              showAllProfilePosts
+                                ? "mb-4 space-y-2 text-foreground leading-relaxed text-sm"
+                                : "mb-4 space-y-2 text-foreground leading-relaxed text-sm max-h-[140px] overflow-y-auto shrink-0"
+                            }
+                          >
+                            {displayedParagraphs.length > 0 ? (
+                              displayedParagraphs.map((paragraph, index) => {
+                                const isLast =
+                                  index === displayedParagraphs.length - 1;
+                                const showToggle = hasLongContent && isLast;
+                                return (
+                                  <p
+                                    key={`${post.id}-p-${index}`}
+                                    className="whitespace-pre-wrap"
+                                  >
+                                    {paragraph}
+                                    {showToggle && (
+                                      <>
+                                        {" "}
+                                        <button
+                                          type="button"
+                                          className="text-primary hover:underline font-medium"
+                                          onClick={() =>
+                                            togglePostExpanded(post.id)
+                                          }
+                                        >
+                                          {isExpanded ? "See less" : "See more"}
+                                        </button>
+                                      </>
+                                    )}
+                                  </p>
+                                );
+                              })
+                            ) : (
+                              <p className="whitespace-pre-wrap">
+                                {post.content}
+                              </p>
+                            )}
+                          </div>
+                          {post.image && (
+                            <div
+                              className={`mb-4 rounded-lg overflow-hidden border border-border/50 bg-secondary/20 flex items-center justify-center shrink-0 ${
+                                showAllProfilePosts
+                                  ? "min-h-[200px]"
+                                  : "min-h-[120px]"
+                              }`}
+                            >
+                              <img
+                                src={post.image}
+                                alt="Post"
+                                className={`w-full h-auto object-contain ${
+                                  showAllProfilePosts
+                                    ? "max-h-[500px]"
+                                    : "max-h-[200px]"
+                                }`}
+                              />
+                            </div>
+                          )}
+                          {!showAllProfilePosts && (
+                            <div className="flex-1 min-h-4" aria-hidden />
+                          )}
+                          <div className="flex items-center justify-between text-sm text-muted-foreground py-2 border-y border-border/50 shrink-0">
+                            <span>
+                              {post.likes + (isLiked ? 1 : 0)} likes
+                            </span>
+                            <div className="flex gap-4">
+                              <span>{post.comments} comments</span>
+                              <span>{post.shares} shares</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between pt-2 -mx-2 shrink-0">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => togglePostLike(post.id)}
+                              className={`flex-1 h-10 rounded-lg gap-2 font-medium ${
+                                isLiked
+                                  ? "text-primary hover:bg-primary/10"
+                                  : "text-muted-foreground hover:text-primary hover:bg-primary/5"
+                              }`}
+                            >
+                              <ThumbsUp
+                                className={`h-[18px] w-[18px] ${isLiked ? "fill-current" : ""}`}
+                              />
+                              <span>Like</span>
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="flex-1 h-10 rounded-lg gap-2 text-muted-foreground hover:text-primary hover:bg-primary/5 font-medium"
+                              onClick={() => router.push(`/posts/${post.id}`)}
+                            >
+                              <MessageCircle className="h-[18px] w-[18px]" />
+                              <span>Comment</span>
+                            </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="flex-1 h-10 rounded-lg gap-2 text-muted-foreground hover:text-primary hover:bg-primary/5 font-medium"
+                                >
+                                  <Share2 className="h-[18px] w-[18px]" />
+                                  <span>Share</span>
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="center">
+                                <DropdownMenuItem
+                                  onClick={() => handleCopyPostLink(post.id)}
+                                  className="cursor-pointer"
+                                >
+                                  <LinkIcon className="mr-2 h-4 w-4" />
+                                  Copy link
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => togglePostSave(post.id)}
+                              className={`h-10 w-10 rounded-lg ${
+                                isSaved
+                                  ? "text-primary"
+                                  : "text-muted-foreground hover:text-primary hover:bg-primary/5"
+                              }`}
+                            >
+                              <Bookmark
+                                className={`h-[18px] w-[18px] ${isSaved ? "fill-current" : ""}`}
+                              />
+                            </Button>
+                          </div>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                  <div className="flex justify-center mt-4">
+                    <Button
+                      variant="secondary"
+                      className="rounded-lg px-6 border border-border bg-card text-card-foreground hover:bg-muted/50"
+                      onClick={() =>
+                        setShowAllProfilePosts(!showAllProfilePosts)
+                      }
+                    >
+                      {showAllProfilePosts ? "See less posts" : "See more"}
+                    </Button>
+                  </div>
+                </>
               )}
             </div>
 
