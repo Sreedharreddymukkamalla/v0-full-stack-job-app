@@ -5,6 +5,7 @@ A polished, professional job networking platform built with Next.js 16, TypeScri
 ## Features
 
 ### Core Features
+
 - **Unified Feed**: Posts, job listings, and company updates in one place
 - **Real-time Messaging**: Direct messaging with threading and conversation persistence
 - **Job Discovery**: Browse and apply to curated job listings with smart matching
@@ -15,17 +16,20 @@ A polished, professional job networking platform built with Next.js 16, TypeScri
 - **Notifications**: Stay updated with job alerts, messages, and connections
 
 ### Authentication
+
 - Email/Password authentication
 - OAuth integration (GitHub, LinkedIn)
 - Session management
 
 ### User Roles
+
 - **Job Seekers**: Search jobs, apply, get AI recommendations
 - **Recruiters**: Post opportunities, review applications, connect with candidates
 
 ## Tech Stack
 
 ### Frontend
+
 - **Framework**: Next.js 16 (App Router)
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS v4
@@ -34,7 +38,8 @@ A polished, professional job networking platform built with Next.js 16, TypeScri
 - **State Management**: React hooks + SWR (recommended)
 
 ### Design System
-- **Color Palette**: 
+
+- **Color Palette**:
   - Primary: Deep Navy/Blue (#1A2F4A)
   - Accent: Teal/Cyan (#4DB8FF)
   - Secondary: Slate Blue (#5B7FB5)
@@ -47,65 +52,68 @@ A polished, professional job networking platform built with Next.js 16, TypeScri
 
 \`\`\`
 app/
-├── (app)/                    # Protected app routes
-│   ├── page.tsx             # Feed/Home
-│   ├── jobs/page.tsx        # Job listings
-│   ├── messages/page.tsx    # Messaging interface
-│   ├── agent/page.tsx       # AI Agent chat
-│   ├── profile/page.tsx     # User profile
-│   ├── settings/page.tsx    # Settings
-│   ├── companies/page.tsx   # Company directory
-│   ├── events/page.tsx      # Events
-│   ├── notifications/page.tsx # Notifications
-│   ├── users/page.tsx       # User discovery
-│   └── groups/page.tsx      # Groups/Communities
-├── signin/page.tsx          # Sign in page
-├── signup/page.tsx          # Sign up page
-├── landing.tsx              # Landing page component
-├── page.tsx                 # Homepage (shows landing)
-├── layout.tsx               # Root layout
-└── globals.css              # Global styles & theme
+├── (app)/ # Protected app routes
+│ ├── page.tsx # Feed/Home
+│ ├── jobs/page.tsx # Job listings
+│ ├── messages/page.tsx # Messaging interface
+│ ├── agent/page.tsx # AI Agent chat
+│ ├── profile/page.tsx # User profile
+│ ├── settings/page.tsx # Settings
+│ ├── companies/page.tsx # Company directory
+│ ├── events/page.tsx # Events
+│ ├── notifications/page.tsx # Notifications
+│ ├── users/page.tsx # User discovery
+│ └── groups/page.tsx # Groups/Communities
+├── signin/page.tsx # Sign in page
+├── signup/page.tsx # Sign up page
+├── landing.tsx # Landing page component
+├── page.tsx # Homepage (shows landing)
+├── layout.tsx # Root layout
+└── globals.css # Global styles & theme
 
 components/
-├── app-sidebar.tsx          # Navigation sidebar
-├── app-layout.tsx           # App wrapper with sidebar
-├── header.tsx               # Top header bar
-└── ui/                      # shadcn/ui components
+├── app-sidebar.tsx # Navigation sidebar
+├── app-layout.tsx # App wrapper with sidebar
+├── header.tsx # Top header bar
+└── ui/ # shadcn/ui components
 \`\`\`
 
 ## Getting Started
 
 ### Prerequisites
+
 - Node.js 18+
 - npm or yarn
 
 ### Installation
 
 1. Clone the repository
-\`\`\`bash
-git clone <repo-url>
-cd aimploy
-\`\`\`
+   \`\`\`bash
+   git clone <repo-url>
+   cd aimploy
+   \`\`\`
 
 2. Install dependencies
-\`\`\`bash
-npm install
-\`\`\`
+   \`\`\`bash
+   npm install
+   \`\`\`
 
 3. Run the development server
-\`\`\`bash
-npm run dev
-\`\`\`
+   \`\`\`bash
+   npm run dev
+   \`\`\`
 
 4. Open http://localhost:3000 in your browser
 
 ## Key Pages & Components
 
 ### Authentication
+
 - **SignIn** (`/signin`): Email/password login with OAuth options
 - **SignUp** (`/signup`): Account creation and onboarding
 
 ### Main App (Protected)
+
 - **Home/Feed** (`/`): Social feed with posts and job highlights
 - **Jobs** (`/jobs`): Job listings with filtering and application tracking
 - **Messages** (`/messages`): Real-time messaging with conversations
@@ -114,6 +122,7 @@ npm run dev
 - **Settings** (`/settings`): Account preferences and privacy
 
 ### Exploration
+
 - **Companies** (`/companies`): Browse company profiles
 - **Events** (`/events`): Networking events and webinars
 - **Users** (`/users`): Professional directory
@@ -126,7 +135,7 @@ The app uses a professional, cohesive design system:
 
 - **Light Mode**: Clean white backgrounds with dark text
 - **Dark Mode**: Deep navy backgrounds with light text
-- **Color-coded Components**: 
+- **Color-coded Components**:
   - Primary (Blue) for main actions and CTAs
   - Accent (Teal) for highlights and interactive elements
   - Secondary (Slate) for alternative actions
@@ -135,15 +144,18 @@ The app uses a professional, cohesive design system:
 ## Component Architecture
 
 ### App Layout Structure
+
 \`\`\`
 <SidebarProvider>
-  <AppSidebar />        # Navigation (collapsible on mobile)
+<AppSidebar /> # Navigation (collapsible on mobile)
+
   <Header />            # Search bar and notifications
   <main>                # Page content
 </SidebarProvider>
 \`\`\`
 
 ### Sidebar Navigation
+
 - Main: Home, Jobs, Messages, Notifications
 - Explore: Users, Companies, Events, Groups
 - Secondary: Settings, Search
