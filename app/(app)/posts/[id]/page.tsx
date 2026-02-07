@@ -63,7 +63,7 @@ export default function PostDetailPage() {
 
         if (data?.feed && Array.isArray(data.feed)) {
           const foundPost = data.feed.find(
-            (item: any) => item.id?.toString() === postId
+            (item: any) => item.id?.toString() === postId,
           );
 
           if (foundPost) {
