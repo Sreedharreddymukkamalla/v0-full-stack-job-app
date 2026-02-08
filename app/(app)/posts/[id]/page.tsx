@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { getHomePageData } from "@/app/(app)/feed/getHomePageData";
 import { getProfile } from "@/lib/profileStore";
+import { getInitials } from "@/lib/utils";
 
 interface Post {
   id: string;
@@ -222,9 +223,11 @@ export default function PostDetailPage() {
         <div className="flex items-start justify-between mb-4">
           <div className="flex gap-3 flex-1">
             <Avatar className="h-11 w-11 ring-2 ring-border">
-              <AvatarImage src={author?.avatar || "/placeholder.svg"} />
+              {author?.avatar && author.avatar !== "/placeholder.svg" && (
+                <AvatarImage src={author.avatar} />
+              )}
               <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                {author?.name?.charAt(0)}
+                {getInitials(author?.name || "")}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1">
@@ -330,11 +333,17 @@ export default function PostDetailPage() {
           <div className="border-t border-border/50 pt-4 space-y-4">
             <div className="flex gap-3">
               <Avatar className="h-9 w-9 ring-2 ring-border">
-                <AvatarImage
-                  src={currentUser?.profile_image_url || "/placeholder.svg"}
-                />
+                {(currentUser?.profile_image_url || currentUser?.avatar) &&
+                  (currentUser?.profile_image_url || currentUser?.avatar) !==
+                    "/placeholder.svg" && (
+                  <AvatarImage
+                    src={
+                      currentUser?.profile_image_url || currentUser?.avatar
+                    }
+                  />
+                )}
                 <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                  {currentUser?.name?.charAt(0) || "U"}
+                  {getInitials(currentUser?.name || "")}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 space-y-2">

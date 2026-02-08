@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { getInitials } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Bell, BellOff, Trash2 } from 'lucide-react';
 
@@ -132,7 +133,7 @@ export default function NotificationsPage() {
               <div className="flex items-start gap-4">
                 <Avatar className="h-10 w-10 flex-shrink-0">
                   <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${notif.user}`} />
-                  <AvatarFallback>{notif.user.charAt(0)}</AvatarFallback>
+                  <AvatarFallback>{getInitials(notif.user)}</AvatarFallback>
                 </Avatar>
 
                 <div className="flex-1 min-w-0">

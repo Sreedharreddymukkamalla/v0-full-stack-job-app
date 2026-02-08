@@ -41,7 +41,7 @@ import {
 import { DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import Link from "next/link";
 import { getProfile, loadProfileFromApi, setProfile } from "@/lib/profileStore";
-import { formatTimeAgo } from "@/lib/utils";
+import { formatTimeAgo, getInitials } from "@/lib/utils";
 import { getHomePageData } from "../feed/getHomePageData";
 import { apiFetch, uploadImage } from "@/lib/api";
 
@@ -768,17 +768,25 @@ export default function ProfilePage() {
             <>
               <div className="flex flex-col items-center justify-center py-6">
                 <Avatar className="h-32 w-32 border-4 border-muted">
-                  <AvatarImage
-                    src={
-                      avatarPreview ||
+                  {(avatarPreview ||
+                    currentProfile?.profile_image_url ||
+                    currentProfile?.profile_image ||
+                    currentProfile?.avatar) &&
+                    (avatarPreview ||
                       currentProfile?.profile_image_url ||
                       currentProfile?.profile_image ||
-                      currentProfile?.avatar ||
-                      "/placeholder.svg"
-                    }
-                  />
+                      currentProfile?.avatar) !== "/placeholder.svg" && (
+                      <AvatarImage
+                        src={
+                          avatarPreview ||
+                          currentProfile?.profile_image_url ||
+                          currentProfile?.profile_image ||
+                          currentProfile?.avatar
+                        }
+                      />
+                    )}
                   <AvatarFallback className="text-2xl">
-                    {(profileData.name || "U").charAt(0)}
+                    {getInitials(profileData.name || "")}
                   </AvatarFallback>
                 </Avatar>
               </div>
@@ -1151,17 +1159,25 @@ export default function ProfilePage() {
                   }}
                 >
                   <Avatar className="h-36 w-36 border-4 border-card ring-4 ring-background shadow-xl group">
-                    <AvatarImage
-                      src={
-                        avatarPreview ||
+                    {(avatarPreview ||
                         currentProfile?.profile_image_url ||
                         currentProfile?.profile_image ||
-                        currentProfile?.avatar ||
-                        "/placeholder.svg"
-                      }
-                    />
+                        currentProfile?.avatar) &&
+                      (avatarPreview ||
+                        currentProfile?.profile_image_url ||
+                        currentProfile?.profile_image ||
+                        currentProfile?.avatar) !== "/placeholder.svg" && (
+                        <AvatarImage
+                          src={
+                            avatarPreview ||
+                            currentProfile?.profile_image_url ||
+                            currentProfile?.profile_image ||
+                            currentProfile?.avatar
+                          }
+                        />
+                      )}
                     <AvatarFallback>
-                      {(profileData.name || "U").charAt(0)}
+                      {getInitials(profileData.name || "")}
                     </AvatarFallback>
                   </Avatar>
                   {isSelfProfile && (
@@ -1259,16 +1275,22 @@ export default function ProfilePage() {
                 <Card className="p-5 shadow-sm border-border/50 mb-4">
                   <div className="flex gap-4">
                     <Avatar className="h-11 w-11 ring-2 ring-primary/10">
-                      <AvatarImage
-                        src={
-                          currentProfile?.profile_image_url ||
+                      {(currentProfile?.profile_image_url ||
                           currentProfile?.profile_image ||
-                          currentProfile?.avatar ||
-                          "/placeholder.svg"
-                        }
-                      />
+                          currentProfile?.avatar) &&
+                        (currentProfile?.profile_image_url ||
+                          currentProfile?.profile_image ||
+                          currentProfile?.avatar) !== "/placeholder.svg" && (
+                          <AvatarImage
+                            src={
+                              currentProfile?.profile_image_url ||
+                              currentProfile?.profile_image ||
+                              currentProfile?.avatar
+                            }
+                          />
+                        )}
                       <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                        {(profileData.name || "U").charAt(0)}
+                        {getInitials(profileData.name || "")}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 space-y-4">
@@ -1434,11 +1456,12 @@ export default function ProfilePage() {
                           <div className="flex items-start justify-between mb-4">
                             <div className="flex gap-3">
                               <Avatar className="h-11 w-11 ring-2 ring-border">
-                                <AvatarImage
-                                  src={author?.avatar || "/placeholder.svg"}
-                                />
+                                {author?.avatar &&
+                                  author.avatar !== "/placeholder.svg" && (
+                                    <AvatarImage src={author.avatar} />
+                                  )}
                                 <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                                  {author?.name?.charAt(0)}
+                                  {getInitials(author?.name || "")}
                                 </AvatarFallback>
                               </Avatar>
                               <div>
@@ -1474,6 +1497,7 @@ export default function ProfilePage() {
                                     onClick={() => openEditPostDialog(post)}
                                     className="cursor-pointer"
                                   >
+                                    <Pencil className="mr-2 h-4 w-4" />
                                     Edit post
                                   </DropdownMenuItem>
                                   <DropdownMenuItem
@@ -1616,14 +1640,23 @@ export default function ProfilePage() {
                             <div className="border-t border-border/50 pt-4 space-y-4">
                               <div className="flex gap-3">
                                 <Avatar className="h-9 w-9 ring-2 ring-border flex-shrink-0">
-                                  <AvatarImage
-                                    src={
-                                      currentProfile?.profile_image_url ||
-                                      "/placeholder.svg"
-                                    }
-                                  />
+                                  {(currentProfile?.profile_image_url ||
+                                    currentProfile?.profile_image ||
+                                    currentProfile?.avatar) &&
+                                    (currentProfile?.profile_image_url ||
+                                      currentProfile?.profile_image ||
+                                      currentProfile?.avatar) !==
+                                      "/placeholder.svg" && (
+                                    <AvatarImage
+                                      src={
+                                        currentProfile?.profile_image_url ||
+                                        currentProfile?.profile_image ||
+                                        currentProfile?.avatar
+                                      }
+                                    />
+                                  )}
                                   <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
-                                    {(profileData.name || "U").charAt(0)}
+                                    {getInitials(profileData.name || "")}
                                   </AvatarFallback>
                                 </Avatar>
                                 <div className="flex-1 space-y-2">
@@ -1664,7 +1697,7 @@ export default function ProfilePage() {
                   <div className="flex justify-center mt-4">
                     <Button
                       variant="secondary"
-                      className="rounded-lg px-6 bg-white border border-border text-foreground hover:bg-muted/50"
+                      className="rounded-lg px-6 border border-border bg-card text-card-foreground hover:bg-muted/50"
                       onClick={() =>
                         setShowAllProfilePosts(!showAllProfilePosts)
                       }

@@ -14,6 +14,7 @@ import {
   MessageCircle,
   Share2,
   MoreHorizontal,
+  Pencil,
   ImageIcon,
   Video,
   Bookmark,
@@ -35,6 +36,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { getCurrentUser } from "@/lib/auth";
+import { getInitials } from "@/lib/utils";
 import { FeedSidebar } from "@/components/feed-sidebar";
 import { getHomePageData } from "../feed/getHomePageData";
 import { getProfile } from "@/lib/profileStore";
@@ -144,7 +146,6 @@ export default function FeedPage() {
             }
           });
           setLikedPosts(initialLiked);
-
         }
       } catch (error) {
         console.error("[v0] Error fetching feed data:", error);
@@ -255,7 +256,11 @@ export default function FeedPage() {
       });
       // update local post list from response (fallback to local edit)
       setPosts((prev) =>
-        prev.map((p) => (p.id === editingPost.id ? { ...p, content: res?.content ?? trimmed } : p)),
+        prev.map((p) =>
+          p.id === editingPost.id
+            ? { ...p, content: res?.content ?? trimmed }
+            : p,
+        ),
       );
       setEditDialogOpen(false);
       setEditingPost(null);
@@ -339,9 +344,18 @@ export default function FeedPage() {
           <Card className="p-5 shadow-sm border-border/50">
             <div className="flex gap-4">
               <Avatar className="h-11 w-11 ring-2 ring-primary/10">
-                <AvatarImage src={currentUser?.profile_image_url || "/placeholder.svg"} />
+                {(currentUser?.profile_image_url ||
+                  currentUser?.avatar) &&
+                  (currentUser?.profile_image_url ||
+                    currentUser?.avatar) !== "/placeholder.svg" && (
+                    <AvatarImage
+                      src={
+                        currentUser?.profile_image_url || currentUser?.avatar
+                      }
+                    />
+                  )}
                 <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                  {currentUser?.name?.charAt(0) || "U"}
+                  {getInitials(currentUser?.name || "")}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 space-y-4">
@@ -478,11 +492,12 @@ export default function FeedPage() {
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex gap-3">
                         <Avatar className="h-11 w-11 ring-2 ring-border">
-                          <AvatarImage
-                            src={author?.avatar || "/placeholder.svg"}
-                          />
+                          {author?.avatar &&
+                            author.avatar !== "/placeholder.svg" && (
+                              <AvatarImage src={author.avatar} />
+                            )}
                           <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                            {author?.name?.charAt(0)}
+                            {getInitials(author?.name || "")}
                           </AvatarFallback>
                         </Avatar>
                         <div>
@@ -510,13 +525,14 @@ export default function FeedPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          {Number(post.author_id) === Number(currentUser?.user_id) && (
+                          {Number(post.author_id) ===
+                            Number(currentUser?.user_id) && (
                             <>
                               <DropdownMenuItem
                                 onClick={() => openEditDialog(post)}
                                 className="cursor-pointer"
                               >
-                                <MoreHorizontal className="mr-2 h-4 w-4" />
+                                <Pencil className="mr-2 h-4 w-4" />
                                 Edit post
                               </DropdownMenuItem>
                               <DropdownMenuItem
@@ -528,7 +544,8 @@ export default function FeedPage() {
                               </DropdownMenuItem>
                             </>
                           )}
-                          {Number(post.author_id) !== Number(currentUser?.user_id) && (
+                          {Number(post.author_id) !==
+                            Number(currentUser?.user_id) && (
                             <DropdownMenuItem className="cursor-pointer text-red-600 hover:bg-red-600 hover:text-white transition-colors">
                               Report post
                             </DropdownMenuItem>
@@ -558,9 +575,7 @@ export default function FeedPage() {
                                   <button
                                     type="button"
                                     className="text-primary hover:underline font-medium"
-                                    onClick={() =>
-                                      togglePostExpanded(post.id)
-                                    }
+                                    onClick={() => togglePostExpanded(post.id)}
                                   >
                                     {isExpanded ? "See less" : "See more"}
                                   </button>
@@ -620,10 +635,11 @@ export default function FeedPage() {
                         variant="ghost"
                         size="sm"
                         onClick={() => toggleLike(post.id)}
-                        className={`flex-1 h-10 rounded-lg gap-2 font-medium transition-colors ${isLiked
+                        className={`flex-1 h-10 rounded-lg gap-2 font-medium transition-colors ${
+                          isLiked
                             ? "text-primary hover:text-primary/80 hover:bg-primary/10"
                             : "text-muted-foreground hover:text-primary hover:bg-primary/5"
-                          }`}
+                        }`}
                       >
                         <ThumbsUp
                           className={`h-[18px] w-[18px] ${isLiked ? "fill-current" : ""}`}
@@ -671,10 +687,11 @@ export default function FeedPage() {
                         variant="ghost"
                         size="icon"
                         onClick={() => toggleSave(post.id)}
-                        className={`h-10 w-10 rounded-lg transition-colors ${isSaved
+                        className={`h-10 w-10 rounded-lg transition-colors ${
+                          isSaved
                             ? "text-primary hover:text-primary hover:bg-transparent"
                             : "text-muted-foreground hover:text-primary hover:bg-primary/5"
-                          }`}
+                        }`}
                       >
                         <Bookmark
                           className={`h-[18px] w-[18px] ${isSaved ? "fill-current" : ""}`}
@@ -700,15 +717,13 @@ export default function FeedPage() {
                                       className="flex gap-3"
                                     >
                                       <Avatar className="h-8 w-8 flex-shrink-0">
-                                        <AvatarImage
-                                          src={
-                                            commentUser?.avatar ||
-                                            "/placeholder.svg"
-                                          }
-                                        />
+                                        {commentUser?.avatar &&
+                                          commentUser.avatar !==
+                                            "/placeholder.svg" && (
+                                            <AvatarImage src={commentUser.avatar} />
+                                          )}
                                         <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                                          {comment.author_name?.charAt(0) ||
-                                            "U"}
+                                          {getInitials(comment.author_name || "")}
                                         </AvatarFallback>
                                       </Avatar>
                                       <div className="flex-1 bg-secondary/50 rounded-xl p-3">
@@ -732,11 +747,19 @@ export default function FeedPage() {
                         {/* Comment input */}
                         <div className="flex gap-3">
                           <Avatar className="h-9 w-9 ring-2 ring-border flex-shrink-0">
-                            <AvatarImage
-                              src={currentUser?.avatar || "/placeholder.svg"}
-                            />
+                            {(currentUser?.profile_image_url ||
+                              currentUser?.avatar) &&
+                              (currentUser?.profile_image_url ||
+                                currentUser?.avatar) !== "/placeholder.svg" && (
+                              <AvatarImage
+                                src={
+                                  currentUser?.profile_image_url ||
+                                  currentUser?.avatar
+                                }
+                              />
+                            )}
                             <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
-                              {currentUser?.name?.charAt(0) || "U"}
+                              {getInitials(currentUser?.name || "")}
                             </AvatarFallback>
                           </Avatar>
                           <div className="flex-1 space-y-2">
@@ -790,9 +813,18 @@ export default function FeedPage() {
           <div className="space-y-4 mt-4">
             <div className="flex gap-3">
               <Avatar className="h-10 w-10 ring-2 ring-primary/10">
-                <AvatarImage src={currentUser?.profile_image_url || "/placeholder.svg"} />
+                {(currentUser?.profile_image_url ||
+                  currentUser?.avatar) &&
+                  (currentUser?.profile_image_url ||
+                    currentUser?.avatar) !== "/placeholder.svg" && (
+                  <AvatarImage
+                    src={
+                      currentUser?.profile_image_url || currentUser?.avatar
+                    }
+                  />
+                )}
                 <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                  {currentUser?.name?.charAt(0) || "U"}
+                  {getInitials(currentUser?.name || "")}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1">
@@ -812,14 +844,15 @@ export default function FeedPage() {
               <Card className="p-4 bg-secondary/20 border-border/50">
                 <div className="flex gap-3">
                   <Avatar className="h-8 w-8">
-                    <AvatarImage
-                      src={
-                        getUser(sharingPost.author_id)?.avatar ||
-                        "/placeholder.svg"
-                      }
-                    />
+                    {getUser(sharingPost.author_id)?.avatar &&
+                      getUser(sharingPost.author_id)?.avatar !==
+                        "/placeholder.svg" && (
+                        <AvatarImage
+                          src={getUser(sharingPost.author_id)?.avatar}
+                        />
+                      )}
                     <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
-                      {getUser(sharingPost.author_id)?.name?.charAt(0)}
+                      {getInitials(getUser(sharingPost.author_id)?.name || "")}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
@@ -851,7 +884,7 @@ export default function FeedPage() {
           </div>
         </DialogContent>
       </Dialog>
-      
+
       {/* Edit Post Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
         <DialogContent className="sm:max-w-[600px]">
@@ -861,9 +894,18 @@ export default function FeedPage() {
           <div className="space-y-4 mt-4">
             <div className="flex gap-3">
               <Avatar className="h-10 w-10 ring-2 ring-primary/10">
-                <AvatarImage src={currentUser?.profile_image_url || "/placeholder.svg"} />
+                {(currentUser?.profile_image_url ||
+                  currentUser?.avatar) &&
+                  (currentUser?.profile_image_url ||
+                    currentUser?.avatar) !== "/placeholder.svg" && (
+                  <AvatarImage
+                    src={
+                      currentUser?.profile_image_url || currentUser?.avatar
+                    }
+                  />
+                )}
                 <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                  {currentUser?.name?.charAt(0) || "U"}
+                  {getInitials(currentUser?.name || "")}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1">
@@ -886,10 +928,7 @@ export default function FeedPage() {
               >
                 Cancel
               </Button>
-              <Button
-                onClick={handleEditSubmit}
-                disabled={!editContent.trim()}
-              >
+              <Button onClick={handleEditSubmit} disabled={!editContent.trim()}>
                 Save
               </Button>
             </div>

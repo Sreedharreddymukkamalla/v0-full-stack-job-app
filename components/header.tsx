@@ -30,6 +30,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { signOut } from "@/lib/auth";
+import { getInitials } from "@/lib/utils";
 import {
   getProfile,
   loadProfileFromApi,
@@ -300,10 +301,10 @@ export function Header() {
               <Button
                 variant="ghost"
                 size="icon"
-                className="relative h-10 w-10 rounded-xl group transition-colors"
+                className="relative h-10 w-10 rounded-xl group hover:ring-2 hover:ring-primary/50 transition-all cursor-pointer"
               >
-                <span className="flex items-center justify-center h-full w-full rounded-xl transition-colors group-hover:bg-teal-600 group-active:bg-teal-700">
-                  <MessageSquare className="h-5 w-5 text-muted-foreground transition-colors group-hover:text-white group-active:text-white" />
+                <span className="flex items-center justify-center h-full w-full rounded-xl transition-colors group-hover:bg-primary group-active:bg-primary/90">
+                  <MessageSquare className="h-5 w-5 text-muted-foreground transition-colors group-hover:text-primary-foreground group-active:text-primary-foreground" />
                 </span>
                 {unreadMsgCount > 0 && (
                   <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-destructive ring-2 ring-card" />
@@ -345,9 +346,11 @@ export function Header() {
                       }}
                     >
                       <Avatar className="h-10 w-10 flex-shrink-0">
-                        <AvatarImage src={msg.avatar || "/placeholder.svg"} />
+                        {msg.avatar && msg.avatar !== "/placeholder.svg" && (
+                          <AvatarImage src={msg.avatar} />
+                        )}
                         <AvatarFallback>
-                          {String(msg.user || "").charAt(0)}
+                          {getInitials(String(msg.user || ""))}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1 min-w-0">
@@ -379,10 +382,10 @@ export function Header() {
               <Button
                 variant="ghost"
                 size="icon"
-                className="relative h-10 w-10 rounded-xl group transition-colors"
+                className="relative h-10 w-10 rounded-xl group hover:ring-2 hover:ring-primary/50 transition-all cursor-pointer"
               >
-                <span className="flex items-center justify-center h-full w-full rounded-xl transition-colors group-hover:bg-teal-600 group-active:bg-teal-700">
-                  <Bell className="h-5 w-5 text-muted-foreground transition-colors group-hover:text-white group-active:text-white" />
+                <span className="flex items-center justify-center h-full w-full rounded-xl transition-colors group-hover:bg-primary group-active:bg-primary/90">
+                  <Bell className="h-5 w-5 text-muted-foreground transition-colors group-hover:text-primary-foreground group-active:text-primary-foreground" />
                 </span>
                 {unreadNotifCount > 0 && (
                   <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-destructive ring-2 ring-card" />
@@ -459,21 +462,27 @@ export function Header() {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="h-9 w-9 rounded-full p-0">
                 <Avatar className="h-9 w-9 ring-2 ring-border hover:ring-primary/50 transition-all cursor-pointer">
-                  <AvatarImage
-                    src={
-                      currentUser?.profile_image_url ||
+                  {(currentUser?.profile_image_url ||
+                    currentUser?.avatar ||
+                    currentUser?.other_avatar) &&
+                    (currentUser?.profile_image_url ||
                       currentUser?.avatar ||
-                      currentUser?.other_avatar ||
-                      "/placeholder.svg"
-                    }
-                  />
+                      currentUser?.other_avatar) !== "/placeholder.svg" && (
+                    <AvatarImage
+                      src={
+                        currentUser?.profile_image_url ||
+                        currentUser?.avatar ||
+                        currentUser?.other_avatar
+                      }
+                    />
+                  )}
                   <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
-                    {(
+                    {getInitials(
                       currentUser?.full_name ||
-                      currentUser?.name ||
-                      currentUser?.user?.full_name ||
-                      "U"
-                    )?.charAt(0) || "U"}
+                        currentUser?.name ||
+                        currentUser?.user?.full_name ||
+                        ""
+                    )}
                   </AvatarFallback>
                 </Avatar>
               </Button>

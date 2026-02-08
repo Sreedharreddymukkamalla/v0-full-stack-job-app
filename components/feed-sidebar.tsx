@@ -15,6 +15,7 @@ import {
   Pin,
 } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
+import { getInitials } from "@/lib/utils";
 import { getHomePageData } from "@/app/(app)/feed/getHomePageData";
 
 export function FeedSidebar() {
@@ -152,7 +153,6 @@ export function FeedSidebar() {
       <Card className="p-5 shadow-sm border-border/50">
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-2">
-            <Pin className="h-5 w-5 text-foreground" />
             <h2 className="font-bold text-lg text-foreground">Latest Jobs</h2>
           </div>
           <Pin className="h-4 w-4 text-muted-foreground" />
@@ -238,16 +238,19 @@ export function FeedSidebar() {
           {suggestedPeople.map((person) => (
             <div
               key={person.id}
-              className={`flex items-center gap-3 transition-all duration-300 ${removingPerson === person.id
+              className={`flex items-center gap-3 transition-all duration-300 ${
+                removingPerson === person.id
                   ? "opacity-0 translate-x-full"
                   : "opacity-100 translate-x-0"
-                }`}
+              }`}
             >
               <Link href={`/users/${person.id}`}>
                 <Avatar className="h-11 w-11 ring-2 ring-border hover:ring-primary/50 transition-all cursor-pointer">
-                  <AvatarImage src={person.avatar || "/placeholder.svg"} />
+                  {person.avatar && person.avatar !== "/placeholder.svg" && (
+                    <AvatarImage src={person.avatar} />
+                  )}
                   <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                    {person.name.charAt(0)}
+                    {getInitials(person.name)}
                   </AvatarFallback>
                 </Avatar>
               </Link>
