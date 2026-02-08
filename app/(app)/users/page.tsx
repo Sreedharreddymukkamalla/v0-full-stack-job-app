@@ -23,6 +23,7 @@ import {
 import { getUserNetwork } from "@/lib/supabase";
 import { getProfile, loadProfileFromApi } from "@/lib/profileStore";
 import { apiFetch } from "@/lib/api";
+import { getInitials } from "@/lib/utils";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
@@ -458,11 +459,12 @@ export default function UsersPage() {
                                   title="View Profile"
                                 >
                                   <Avatar className="h-24 w-24 ring-4 ring-card">
-                                    <AvatarImage
-                                      src={user.avatar || "/placeholder.svg"}
-                                    />
+                                    {user.avatar &&
+                                      user.avatar !== "/placeholder.svg" && (
+                                        <AvatarImage src={user.avatar} />
+                                      )}
                                     <AvatarFallback className="text-lg">
-                                      {user.name.charAt(0)}
+                                      {getInitials(user.name)}
                                     </AvatarFallback>
                                   </Avatar>
                                 </div>
@@ -554,11 +556,12 @@ export default function UsersPage() {
                             title="View Profile"
                           >
                             <Avatar className="h-24 w-24 ring-4 ring-card">
-                              <AvatarImage
-                                src={user.avatar || "/placeholder.svg"}
-                              />
+                              {user.avatar &&
+                                user.avatar !== "/placeholder.svg" && (
+                                  <AvatarImage src={user.avatar} />
+                                )}
                               <AvatarFallback className="text-lg">
-                                {user.name.charAt(0)}
+                                {getInitials(user.name)}
                               </AvatarFallback>
                             </Avatar>
                           </div>
@@ -621,11 +624,12 @@ export default function UsersPage() {
                           title="View Profile"
                         >
                           <Avatar className="h-24 w-24 ring-4 ring-card">
-                            <AvatarImage
-                              src={user.avatar || "/placeholder.svg"}
-                            />
+                            {user.avatar &&
+                              user.avatar !== "/placeholder.svg" && (
+                                <AvatarImage src={user.avatar} />
+                              )}
                             <AvatarFallback className="text-lg">
-                              {user.name.charAt(0)}
+                              {getInitials(user.name)}
                             </AvatarFallback>
                           </Avatar>
                         </div>
@@ -713,11 +717,12 @@ export default function UsersPage() {
                           title="View Profile"
                         >
                           <Avatar className="h-24 w-24 ring-4 ring-card">
-                            <AvatarImage
-                              src={user.avatar || "/placeholder.svg"}
-                            />
+                            {user.avatar &&
+                              user.avatar !== "/placeholder.svg" && (
+                                <AvatarImage src={user.avatar} />
+                              )}
                             <AvatarFallback className="text-lg">
-                              {user.name.charAt(0)}
+                              {getInitials(user.name)}
                             </AvatarFallback>
                           </Avatar>
                         </div>

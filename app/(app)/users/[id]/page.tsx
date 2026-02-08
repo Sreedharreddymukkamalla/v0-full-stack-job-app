@@ -30,6 +30,7 @@ import {
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { apiFetch, uploadImage } from "@/lib/api";
 import { getCurrentUser } from "@/lib/auth";
+import { getInitials } from "@/lib/utils";
 
 interface UserProfile {
   id: string;
@@ -444,16 +445,22 @@ export default function UserProfilePage() {
                   }}
                 >
                   <Avatar className="h-32 w-32 border-4 border-card ring-4 ring-background shadow-xl">
-                    <AvatarImage
-                      src={
-                        profile?.profile_image_url ||
+                    {(profile?.profile_image_url ||
                         profile?.profile_image ||
-                        profile?.avatar ||
-                        "/placeholder.svg"
-                      }
-                    />
+                        profile?.avatar) &&
+                      (profile?.profile_image_url ||
+                        profile?.profile_image ||
+                        profile?.avatar) !== "/placeholder.svg" && (
+                        <AvatarImage
+                          src={
+                            profile?.profile_image_url ||
+                            profile?.profile_image ||
+                            profile?.avatar
+                          }
+                        />
+                      )}
                     <AvatarFallback>
-                      {(formData.name || "U").charAt(0)}
+                      {getInitials(formData.name || "")}
                     </AvatarFallback>
                   </Avatar>
                   {isOwnProfile && isEditMode && (
@@ -613,16 +620,23 @@ export default function UserProfilePage() {
                           <div className="flex items-start justify-between mb-4 shrink-0">
                             <div className="flex gap-3">
                               <Avatar className="h-11 w-11 ring-2 ring-border">
-                                <AvatarImage
-                                  src={
-                                    profile?.profile_image_url ||
+                                {(profile?.profile_image_url ||
+                                  profile?.profile_image ||
+                                  profile?.avatar) &&
+                                  (profile?.profile_image_url ||
                                     profile?.profile_image ||
-                                    profile?.avatar ||
-                                    "/placeholder.svg"
-                                  }
-                                />
+                                    profile?.avatar) !==
+                                    "/placeholder.svg" && (
+                                    <AvatarImage
+                                      src={
+                                        profile?.profile_image_url ||
+                                        profile?.profile_image ||
+                                        profile?.avatar
+                                      }
+                                    />
+                                  )}
                                 <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                                  {(formData.name || "U").charAt(0)}
+                                  {getInitials(formData.name || "")}
                                 </AvatarFallback>
                               </Avatar>
                               <div>

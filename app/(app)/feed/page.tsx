@@ -36,6 +36,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { getCurrentUser } from "@/lib/auth";
+import { getInitials } from "@/lib/utils";
 import { FeedSidebar } from "@/components/feed-sidebar";
 import { getHomePageData } from "../feed/getHomePageData";
 import { getProfile } from "@/lib/profileStore";
@@ -343,11 +344,18 @@ export default function FeedPage() {
           <Card className="p-5 shadow-sm border-border/50">
             <div className="flex gap-4">
               <Avatar className="h-11 w-11 ring-2 ring-primary/10">
-                <AvatarImage
-                  src={currentUser?.profile_image_url || "/placeholder.svg"}
-                />
+                {(currentUser?.profile_image_url ||
+                  currentUser?.avatar) &&
+                  (currentUser?.profile_image_url ||
+                    currentUser?.avatar) !== "/placeholder.svg" && (
+                    <AvatarImage
+                      src={
+                        currentUser?.profile_image_url || currentUser?.avatar
+                      }
+                    />
+                  )}
                 <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                  {currentUser?.name?.charAt(0) || "U"}
+                  {getInitials(currentUser?.name || "")}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 space-y-4">
@@ -484,11 +492,12 @@ export default function FeedPage() {
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex gap-3">
                         <Avatar className="h-11 w-11 ring-2 ring-border">
-                          <AvatarImage
-                            src={author?.avatar || "/placeholder.svg"}
-                          />
+                          {author?.avatar &&
+                            author.avatar !== "/placeholder.svg" && (
+                              <AvatarImage src={author.avatar} />
+                            )}
                           <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                            {author?.name?.charAt(0)}
+                            {getInitials(author?.name || "")}
                           </AvatarFallback>
                         </Avatar>
                         <div>
@@ -708,15 +717,13 @@ export default function FeedPage() {
                                       className="flex gap-3"
                                     >
                                       <Avatar className="h-8 w-8 flex-shrink-0">
-                                        <AvatarImage
-                                          src={
-                                            commentUser?.avatar ||
-                                            "/placeholder.svg"
-                                          }
-                                        />
+                                        {commentUser?.avatar &&
+                                          commentUser.avatar !==
+                                            "/placeholder.svg" && (
+                                            <AvatarImage src={commentUser.avatar} />
+                                          )}
                                         <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                                          {comment.author_name?.charAt(0) ||
-                                            "U"}
+                                          {getInitials(comment.author_name || "")}
                                         </AvatarFallback>
                                       </Avatar>
                                       <div className="flex-1 bg-secondary/50 rounded-xl p-3">
@@ -740,11 +747,19 @@ export default function FeedPage() {
                         {/* Comment input */}
                         <div className="flex gap-3">
                           <Avatar className="h-9 w-9 ring-2 ring-border flex-shrink-0">
-                            <AvatarImage
-                              src={currentUser?.avatar || "/placeholder.svg"}
-                            />
+                            {(currentUser?.profile_image_url ||
+                              currentUser?.avatar) &&
+                              (currentUser?.profile_image_url ||
+                                currentUser?.avatar) !== "/placeholder.svg" && (
+                              <AvatarImage
+                                src={
+                                  currentUser?.profile_image_url ||
+                                  currentUser?.avatar
+                                }
+                              />
+                            )}
                             <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
-                              {currentUser?.name?.charAt(0) || "U"}
+                              {getInitials(currentUser?.name || "")}
                             </AvatarFallback>
                           </Avatar>
                           <div className="flex-1 space-y-2">
@@ -798,11 +813,18 @@ export default function FeedPage() {
           <div className="space-y-4 mt-4">
             <div className="flex gap-3">
               <Avatar className="h-10 w-10 ring-2 ring-primary/10">
-                <AvatarImage
-                  src={currentUser?.profile_image_url || "/placeholder.svg"}
-                />
+                {(currentUser?.profile_image_url ||
+                  currentUser?.avatar) &&
+                  (currentUser?.profile_image_url ||
+                    currentUser?.avatar) !== "/placeholder.svg" && (
+                  <AvatarImage
+                    src={
+                      currentUser?.profile_image_url || currentUser?.avatar
+                    }
+                  />
+                )}
                 <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                  {currentUser?.name?.charAt(0) || "U"}
+                  {getInitials(currentUser?.name || "")}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1">
@@ -822,14 +844,15 @@ export default function FeedPage() {
               <Card className="p-4 bg-secondary/20 border-border/50">
                 <div className="flex gap-3">
                   <Avatar className="h-8 w-8">
-                    <AvatarImage
-                      src={
-                        getUser(sharingPost.author_id)?.avatar ||
-                        "/placeholder.svg"
-                      }
-                    />
+                    {getUser(sharingPost.author_id)?.avatar &&
+                      getUser(sharingPost.author_id)?.avatar !==
+                        "/placeholder.svg" && (
+                        <AvatarImage
+                          src={getUser(sharingPost.author_id)?.avatar}
+                        />
+                      )}
                     <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
-                      {getUser(sharingPost.author_id)?.name?.charAt(0)}
+                      {getInitials(getUser(sharingPost.author_id)?.name || "")}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
@@ -871,11 +894,18 @@ export default function FeedPage() {
           <div className="space-y-4 mt-4">
             <div className="flex gap-3">
               <Avatar className="h-10 w-10 ring-2 ring-primary/10">
-                <AvatarImage
-                  src={currentUser?.profile_image_url || "/placeholder.svg"}
-                />
+                {(currentUser?.profile_image_url ||
+                  currentUser?.avatar) &&
+                  (currentUser?.profile_image_url ||
+                    currentUser?.avatar) !== "/placeholder.svg" && (
+                  <AvatarImage
+                    src={
+                      currentUser?.profile_image_url || currentUser?.avatar
+                    }
+                  />
+                )}
                 <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                  {currentUser?.name?.charAt(0) || "U"}
+                  {getInitials(currentUser?.name || "")}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1">

@@ -26,6 +26,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { getUserConversations, getSupabaseClient } from '@/lib/supabase';
+import { getInitials } from '@/lib/utils';
 import { getProfile } from '@/lib/profileStore';
 import { apiFetch } from '@/lib/api';
 
@@ -583,9 +584,11 @@ export default function MessagesPage() {
                 <div className="flex items-start gap-3">
                   <div className="relative">
                     <Avatar className="h-12 w-12 ring-2 ring-border">
-                      <AvatarImage src={conv.avatar || "/placeholder.svg"} />
+                      {conv.avatar && conv.avatar !== "/placeholder.svg" && (
+                        <AvatarImage src={conv.avatar} />
+                      )}
                       <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                        {String(conv.name || '').split(' ').map((n: string) => n[0]).join('')}
+                        {getInitials(conv.name || '')}
                       </AvatarFallback>
                     </Avatar>
                     {conv.online && (
@@ -623,9 +626,11 @@ export default function MessagesPage() {
               <div className="flex items-center gap-4">
                 <div className="relative">
                   <Avatar className="h-11 w-11 ring-2 ring-border">
-                    <AvatarImage src={selectedChat.avatar || "/placeholder.svg"} />
+                    {selectedChat.avatar && selectedChat.avatar !== "/placeholder.svg" && (
+                      <AvatarImage src={selectedChat.avatar} />
+                    )}
                     <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                      {selectedChat.name.split(' ').map(n => n[0]).join('')}
+                      {getInitials(selectedChat.name || '')}
                     </AvatarFallback>
                   </Avatar>
                   {selectedChat.online && (

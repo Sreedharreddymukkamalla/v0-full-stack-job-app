@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Card } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { getInitials } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Users, FileText, Briefcase } from 'lucide-react';
@@ -194,8 +195,11 @@ export function SearchContent() {
                         <Card className="p-4 hover:bg-secondary/50 cursor-pointer transition-colors">
                           <div className="flex items-center gap-4">
                             <Avatar className="h-12 w-12">
-                              <AvatarImage src={person.avatar} />
-                              <AvatarFallback>{person.name.charAt(0)}</AvatarFallback>
+                              {person.avatar &&
+                                person.avatar !== "/placeholder.svg" && (
+                                  <AvatarImage src={person.avatar} />
+                                )}
+                              <AvatarFallback>{getInitials(person.name)}</AvatarFallback>
                             </Avatar>
                             <div className="flex-1">
                               <p className="font-semibold text-foreground">{person.name}</p>
@@ -222,8 +226,11 @@ export function SearchContent() {
                         <Card className="p-4 hover:bg-secondary/50 cursor-pointer transition-colors">
                           <div className="flex items-start gap-4">
                             <Avatar className="h-10 w-10 flex-shrink-0">
-                              <AvatarImage src={post.avatar} />
-                              <AvatarFallback>{post.author.charAt(0)}</AvatarFallback>
+                              {post.avatar &&
+                                post.avatar !== "/placeholder.svg" && (
+                                  <AvatarImage src={post.avatar} />
+                                )}
+                              <AvatarFallback>{getInitials(post.author)}</AvatarFallback>
                             </Avatar>
                             <div className="flex-1 min-w-0">
                               <p className="font-semibold text-foreground">{post.title}</p>
@@ -281,7 +288,7 @@ export function SearchContent() {
                   <div className="flex items-center gap-4">
                     <Avatar className="h-12 w-12">
                       <AvatarImage src={person.avatar} />
-                      <AvatarFallback>{person.name.charAt(0)}</AvatarFallback>
+                      <AvatarFallback>{getInitials(person.name)}</AvatarFallback>
                     </Avatar>
                     <div className="flex-1">
                       <p className="font-semibold text-foreground">{person.name}</p>
@@ -307,7 +314,7 @@ export function SearchContent() {
                   <div className="flex items-start gap-4">
                     <Avatar className="h-10 w-10 flex-shrink-0">
                       <AvatarImage src={post.avatar} />
-                      <AvatarFallback>{post.author.charAt(0)}</AvatarFallback>
+                      <AvatarFallback>{getInitials(post.author)}</AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-foreground">{post.title}</p>
